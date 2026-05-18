@@ -87,7 +87,6 @@ struct SnippetEditView: View {
             .labelsHidden()
             .pickerStyle(.menu)
         }
-        .disabled(!isNew)
     }
 
     // MARK: - 缩写输入
@@ -186,6 +185,10 @@ struct SnippetEditView: View {
         case .new:
             manager.addSnippet(abbreviation: abbr, expandedText: expanded, description: desc, toGroup: gid)
         case .existing(let original):
+            // 分组改变时先移动到目标分组
+            if let originalGroupID = manager.editingGroupID, gid != originalGroupID {
+                manager.moveSnippet(original, from: originalGroupID, to: gid)
+            }
             manager.updateSnippet(original, abbreviation: abbr, expandedText: expanded, description: desc, inGroup: gid)
         case .inactive:
             break

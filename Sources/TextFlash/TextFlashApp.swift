@@ -52,37 +52,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - 片段窗口
 
-    @objc private func openSnippetWindow() {
+    @MainActor @objc private func openSnippetWindow() {
         // 懒加载：打开片段窗口时检查并引导权限
         EventController.shared.startWithPrompt()
 
-        Task { @MainActor in
-            if let existing = snippetWindow, existing.isVisible {
-                existing.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
-                return
-            }
-
-            let manager = SnippetManager()
-            let hostingView = NSHostingView(rootView: SnippetManagerView(manager: manager))
-            hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 500)
-
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                backing: .buffered,
-                defer: false
-            )
-            window.title = "TextFlash — 片段管理"
-            window.titlebarAppearsTransparent = true
-            window.styleMask.insert(.fullSizeContentView)
-            window.contentView = hostingView
-            window.center()
-            window.setFrameAutosaveName("TextFlashSnippetWindow")
-            window.makeKeyAndOrderFront(nil)
+        if let existing = snippetWindow {
+            existing.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
-            snippetWindow = window
+            return
         }
+
+        let manager = SnippetManager()
+        let hostingView = NSHostingView(rootView: SnippetManagerView(manager: manager))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 500)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "TextFlash — 片段管理"
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
+        window.isReleasedWhenClosed = false  // 关闭时不释放，手动管理生命周期
+        window.contentView = hostingView
+        window.center()
+        window.setFrameAutosaveName("TextFlashSnippetWindow")
+
+        // 监听窗口关闭 → 清空引用，防止下次点击访问悬垂指针
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            self?.snippetWindow = nil
+        }
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        snippetWindow = window
     }
 
     @objc private func showAbout() {
@@ -90,31 +99,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    @objc private func openDebugWindow() {
-        Task { @MainActor in
-            if let existing = debugWindow, existing.isVisible {
-                existing.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
-                return
-            }
-
-            let hostingView = NSHostingView(rootView: DebugPanel())
-            hostingView.frame = NSRect(x: 0, y: 0, width: 480, height: 420)
-
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 480, height: 420),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                backing: .buffered,
-                defer: false
-            )
-            window.title = "TextFlash — 调试面板"
-            window.contentView = hostingView
-            window.center()
-            window.setFrameAutosaveName("TextFlashDebugWindow")
-            window.makeKeyAndOrderFront(nil)
+    @MainActor @objc private func openDebugWindow() {
+        if let existing = debugWindow {
+            existing.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
-            debugWindow = window
+            return
         }
+
+        let hostingView = NSHostingView(rootView: DebugPanel())
+        hostingView.frame = NSRect(x: 0, y: 0, width: 480, height: 420)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 420),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "TextFlash — 调试面板"
+        window.isReleasedWhenClosed = false  // 关闭时不释放，手动管理生命周期
+        window.contentView = hostingView
+        window.center()
+        window.setFrameAutosaveName("TextFlashDebugWindow")
+
+        // 监听窗口关闭 → 清空引用，防止下次点击访问悬垂指针
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            self?.debugWindow = nil
+        }
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        debugWindow = window
     }
 
     // MARK: - EventController 同步

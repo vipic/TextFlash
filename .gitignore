@@ -3,5 +3,4 @@
 *.dmg
 /TextFlash
 *.dSYM/
-data/
 textflash-panel.html
