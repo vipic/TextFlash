@@ -54,7 +54,7 @@ final class DatabaseManager {
             return
         }
         execute("PRAGMA journal_mode=WAL;")
-        execute("PRAGMA synchronous=NORMAL;")
+        execute("PRAGMA synchronous=FULL;")
         execute("PRAGMA foreign_keys=ON;")
         print("[DatabaseManager] 数据库已打开: \(dbPath)")
     }
@@ -116,13 +116,15 @@ final class DatabaseManager {
         lock.lock(); defer { lock.unlock() }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK, let s = stmt else {
-            print("[DatabaseManager] prepare 失败: \(lastError())")
+            print("[DatabaseManager] prepare 失败: \(lastError()) — \(sql.prefix(60))")
             return false
         }
         defer { sqlite3_finalize(s) }
         bind(s)
         let rc = sqlite3_step(s)
-        return rc == SQLITE_DONE || rc == SQLITE_OK
+        let ok = rc == SQLITE_DONE || rc == SQLITE_OK
+        if !ok { print("[DatabaseManager] step 失败: \(lastError()) — \(sql.prefix(60))") }
+        return ok
     }
 
     /// 查询（带闭包绑定参数 + 行映射）

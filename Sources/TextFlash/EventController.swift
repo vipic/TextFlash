@@ -120,7 +120,6 @@ public final class EventController {
     /// 触发字符集——当这些字符出现时触发匹配检查
     public var triggerCharacters: Set<Character> = [
         " ", "\t", "\r", "\n",
-        ".", "!", "?", ";", ":",
         ")", "]", "}", ">",
     ]
     /// 注入时的事件源标记值（防止自触发）
@@ -320,22 +319,21 @@ public final class EventController {
             return Unmanaged.passUnretained(event)
         }
 
-        // 非打印字符跳过（但保留退格上面的逻辑）
-        guard unicodeLength == 1, char.isASCII else {
+        // 非打印字符跳过（退格除外）
+        guard unicodeLength == 1 else {
             return Unmanaged.passUnretained(event)
         }
 
-        // 检查是否为触发字符
+        // 触发字符检查
         if triggerCharacters.contains(char) {
             DispatchQueue.main.async { [weak self] in
                 self?.handleTrigger(char)
             }
-            // 重置缓冲区（无论是否匹配，触发字符后都重置）
             DispatchQueue.main.async { [weak self] in
                 self?.inputBuffer = ""
             }
-        } else if char.isLetter || char.isNumber || char == "_" || char == "-" || char == "," {
-            // 追加到缓冲区，从尾部往前搜缩写后缀（支持 buffer 中有"噪声"字符）
+        } else {
+            // 非触发字符 → 一律加入 buffer，Trie 检查即时匹配
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 self.inputBuffer.append(char)
@@ -352,18 +350,13 @@ public final class EventController {
                         return
                     }
                     if matched {
-                        // 部分前缀匹配（如 "d" 是 "ddm" 的前缀）→ 保留 buffer 等待更多输入
+                        // 部分前缀匹配 → 保留 buffer 等待更多输入
                         return
                     }
                     // matched==false → 这个后缀长度不可能匹配，试试更短的
                 }
-                // 所有后缀都不匹配 → 清空（buffer 无意义的积累）
+                // 所有后缀都不匹配 → 清空
                 self.inputBuffer = ""
-            }
-        } else {
-            // 其他非 ASCII / 非字母字符：重置缓冲区
-            DispatchQueue.main.async { [weak self] in
-                self?.inputBuffer = ""
             }
         }
 
