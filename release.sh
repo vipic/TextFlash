@@ -1,0 +1,164 @@
+#!/bin/bash
+# TextFlash Release — 生产发布
+# 流程：release 编译 → 去除符号 → DMG 打包 → 签名
+# 用法: ./release.sh [version] [--publish]
+#   ./release.sh 0.1.0              # 仅构建 DMG
+#   ./release.sh 0.1.0 --publish    # 构建 + 推 tag + 创建 GitHub Release
+set -e
+
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_NAME="TextFlash"
+BUILD_DIR="$PROJECT_DIR/.build/release"
+STAGING="$PROJECT_DIR/.release_staging"
+BUNDLE_ID="com.nekutai.textflash"
+VERSION="${1:-0.1.0}"
+VERSION="${VERSION#v}"
+BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
+DMG_NAME="${APP_NAME}-${VERSION}.dmg"
+IDENTITY="${CODESIGN_IDENTITY:-TextFlash Release}"
+
+# 解析 --publish 标志
+PUBLISH=false
+for arg in "$@"; do
+    [[ "$arg" == "--publish" ]] && PUBLISH=true
+done
+
+echo "🏭 Building $APP_NAME $VERSION (release)..."
+echo ""
+
+cd "$PROJECT_DIR"
+
+# ── 1. Release 编译 ──
+echo "━━━ 1/5 Release 编译 ━━━"
+swift build -c release -Xswiftc -Osize 2>&1 | tail -3
+
+BIN="$BUILD_DIR/$APP_NAME"
+test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }
+
+# ── 2. 去除符号 ──
+echo ""
+echo "━━━ 2/5 去除调试符号 ━━━"
+BIN_SIZE_BEFORE=$(stat -f%z "$BIN")
+strip -S "$BIN" 2>/dev/null || true
+BIN_SIZE_AFTER=$(stat -f%z "$BIN")
+echo "   二进制: $(numfmt --to=iec $BIN_SIZE_BEFORE 2>/dev/null || echo "${BIN_SIZE_BEFORE}") → $(numfmt --to=iec $BIN_SIZE_AFTER 2>/dev/null || echo "${BIN_SIZE_AFTER}")"
+
+# ── 3. 组装 .app ──
+echo ""
+echo "━━━ 3/5 组装 .app bundle ━━━"
+rm -rf "$STAGING"
+mkdir -p "$STAGING/$APP_NAME.app/Contents/MacOS"
+mkdir -p "$STAGING/$APP_NAME.app/Contents/Resources"
+
+cp "$BIN" "$STAGING/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+
+cat > "$STAGING/$APP_NAME.app/Contents/Info.plist" << PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>$APP_NAME</string>
+    <key>CFBundleIdentifier</key>
+    <string>$BUNDLE_ID</string>
+    <key>CFBundleName</key>
+    <string>$APP_NAME</string>
+    <key>CFBundleVersion</key>
+    <string>$BUILD</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$VERSION</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>TextFlash 需要辅助功能权限以监听键盘事件并展开文本。</string>
+</dict>
+</plist>
+PLIST
+
+# ── 4. 代码签名 ──
+echo ""
+echo "━━━ 4/5 代码签名 ━━━"
+
+CERT_OK=true
+if security find-identity -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
+    echo "   签名身份: $IDENTITY"
+else
+    echo "⚠️  未找到 \"$IDENTITY\" 代码签名证书，回退 ad-hoc"
+    CERT_OK=false
+fi
+
+if $CERT_OK; then
+    codesign --force --deep --sign "$IDENTITY" "$STAGING/$APP_NAME.app" 2>&1
+else
+    codesign --force --deep --sign - "$STAGING/$APP_NAME.app" 2>&1
+fi
+
+# ── 5. DMG 打包 ──
+echo ""
+echo "━━━ 5/5 DMG 打包 ━━━"
+DMG_PATH="$PROJECT_DIR/$DMG_NAME"
+rm -f "$DMG_PATH"
+
+DMG_SRC="$STAGING/dmg_root"
+mkdir -p "$DMG_SRC"
+cp -R "$STAGING/$APP_NAME.app" "$DMG_SRC/"
+ln -s /Applications "$DMG_SRC/Applications" 2>/dev/null || true
+
+APP_SIZE_KB=$(du -sk "$DMG_SRC/$APP_NAME.app" | cut -f1)
+DMG_SIZE_MB=$(( (APP_SIZE_KB / 1024) + 2 ))
+
+hdiutil create -volname "$APP_NAME" \
+    -srcfolder "$DMG_SRC" \
+    -ov -format UDZO \
+    "$DMG_PATH" 2>&1 | tail -1
+
+rm -rf "$STAGING"
+
+# ── 发布到 GitHub Releases ──
+if $PUBLISH; then
+    echo ""
+    echo "━━━ 发布到 GitHub Releases ━━━"
+
+    if ! command -v gh &>/dev/null; then
+        echo "❌ 未安装 gh CLI"
+        exit 1
+    fi
+
+    TAG="$VERSION"
+
+    if git rev-parse "$TAG" &>/dev/null 2>&1; then
+        echo "   ⚠️  tag $TAG 已存在"
+    else
+        echo "   🏷  创建 tag $TAG..."
+        git tag "$TAG"
+    fi
+
+    git push origin main "$TAG" 2>&1 | tail -2
+
+    if gh release view "$TAG" &>/dev/null 2>&1; then
+        echo "   ⚠️  Release $TAG 已存在，仅上传资产..."
+        gh release upload "$TAG" "$DMG_PATH" --clobber
+    else
+        echo "   📦 创建 Release $TAG..."
+        gh release create "$TAG" \
+            --title "$APP_NAME $VERSION" \
+            --notes "- $APP_NAME $VERSION 发布" \
+            "$DMG_PATH"
+    fi
+
+    echo "   ✅ 发布完成"
+fi
+
+echo ""
+echo "╔══════════════════════════════════════╗"
+echo "║  ✅ Release $VERSION 完成              ║"
+echo "╠══════════════════════════════════════╣"
+printf "║  📦 %-32s ║\n" "$DMG_NAME"
+DMG_SIZE=$(stat -f%z "$DMG_PATH" 2>/dev/null || echo 0)
+DMG_MB=$((DMG_SIZE / 1048576))
+printf "║  📏 DMG: %d MB                        ║\n" $DMG_MB
+echo "╚══════════════════════════════════════╝"
