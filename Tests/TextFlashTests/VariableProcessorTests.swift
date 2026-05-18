@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import VariableProcessor
+@testable import TextFlash
 
 // MARK: - 固定日期 Provider，用于确定性测试
 private func fixedDate() -> Date {

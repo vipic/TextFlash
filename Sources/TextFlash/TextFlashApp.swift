@@ -51,29 +51,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - 片段窗口
 
     @objc private func openSnippetWindow() {
-        if let existing = snippetWindow, existing.isVisible {
-            existing.makeKeyAndOrderFront(nil)
+        Task { @MainActor in
+            if let existing = snippetWindow, existing.isVisible {
+                existing.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                return
+            }
+
+            let manager = SnippetManager()
+            let hostingView = NSHostingView(rootView: SnippetManagerView(manager: manager))
+            hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 500)
+
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "TextFlash — 片段管理"
+            window.contentView = hostingView
+            window.center()
+            window.setFrameAutosaveName("TextFlashSnippetWindow")
+            window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
-            return
+            snippetWindow = window
         }
-
-        let manager = SnippetManager()
-        let hostingView = NSHostingView(rootView: SnippetManagerView(manager: manager))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 500)
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "TextFlash — 片段管理"
-        window.contentView = hostingView
-        window.center()
-        window.setFrameAutosaveName("TextFlashSnippetWindow")
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        snippetWindow = window
     }
 
     @objc private func showAbout() {
@@ -84,9 +86,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - EventController 同步
 
     private func loadSnippetsIntoController() {
-        let manager = SnippetManager()
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Documents/Luigi/TextFlash/data/snippets.json")
+        guard let data = try? Data(contentsOf: url),
+              let store = try? JSONDecoder().decode(SnippetStore.self, from: data)
+        else { return }
+
         EventController.shared.removeAllSnippets()
-        for group in manager.groups {
+        for group in store.groups {
             for snippet in group.snippets where !snippet.abbreviation.isEmpty {
                 EventController.shared.addSnippet(
                     snippet.abbreviation,
