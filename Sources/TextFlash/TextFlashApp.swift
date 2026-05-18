@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem?
     private var snippetWindow: NSWindow?
+    private var debugWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // LSUIElement：隐藏 Dock 图标
@@ -42,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "打开片段管理…", action: #selector(openSnippetWindow), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "调试面板…", action: #selector(openDebugWindow), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "关于 TextFlash", action: #selector(showAbout), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "退出 TextFlash", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -51,6 +53,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - 片段窗口
 
     @objc private func openSnippetWindow() {
+        // 懒加载：打开片段窗口时检查并引导权限
+        EventController.shared.startWithPrompt()
+
         Task { @MainActor in
             if let existing = snippetWindow, existing.isVisible {
                 existing.makeKeyAndOrderFront(nil)
@@ -69,6 +74,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 defer: false
             )
             window.title = "TextFlash — 片段管理"
+            window.titlebarAppearsTransparent = true
+            window.styleMask.insert(.fullSizeContentView)
             window.contentView = hostingView
             window.center()
             window.setFrameAutosaveName("TextFlashSnippetWindow")
@@ -81,6 +88,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showAbout() {
         NSApp.orderFrontStandardAboutPanel(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func openDebugWindow() {
+        Task { @MainActor in
+            if let existing = debugWindow, existing.isVisible {
+                existing.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                return
+            }
+
+            let hostingView = NSHostingView(rootView: DebugPanel())
+            hostingView.frame = NSRect(x: 0, y: 0, width: 480, height: 420)
+
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 480, height: 420),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "TextFlash — 调试面板"
+            window.contentView = hostingView
+            window.center()
+            window.setFrameAutosaveName("TextFlashDebugWindow")
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            debugWindow = window
+        }
     }
 
     // MARK: - EventController 同步

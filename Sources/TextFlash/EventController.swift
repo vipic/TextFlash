@@ -107,12 +107,12 @@ public final class EventController {
     private var eventTap: CFMachPort?
     /// RunLoop 事件源
     private var runLoopSource: CFRunLoopSource?
-    /// 是否正在运行
-    private var isRunning = false
-    /// 当前输入缓冲区（已键入的字符序列）
-    private var inputBuffer = ""
-    /// 是否正在注入（防止自触发循环）
-    private var isInjecting = false
+    /// 当前输入缓冲区（调试用）
+    var inputBuffer = ""
+    /// 是否正在运行（调试用）
+    var isRunning = false
+    /// 是否正在注入（调试用）
+    var isInjecting = false
     /// 前缀树
     private let trie = Trie()
     /// 缩写→展开文本字典（用于快速查询完整展开）
@@ -120,25 +120,32 @@ public final class EventController {
     /// 触发字符集——当这些字符出现时触发匹配检查
     public var triggerCharacters: Set<Character> = [
         " ", "\t", "\r", "\n",
-        ".", ",", "!", "?", ";", ":",
+        ".", "!", "?", ";", ":",
         ")", "]", "}", ">",
     ]
     /// 注入时的事件源标记值（防止自触发）
     private static let injectionTag: Int64 = 0x53_4E_49_50  // "SNIP" in hex
-
     // MARK: - Public API
 
-    /// 启动全局键盘事件监听。返回 false 表示权限不足。
+    /// 启动全局键盘事件监听。返回 false 表示权限不足（静默失败，不弹窗）。
+    /// 权限提示在用户交互时懒加载触发（打开片段窗口/添加片段时）。
     @discardableResult
     public func start() -> Bool {
         guard !isRunning else { return true }
         guard checkPermission() else {
-            requestPermission()
             return false
         }
         setupEventTap()
         isRunning = true
         return true
+    }
+
+    /// 尝试验证并启动——权限不足时弹出引导对话框
+    @discardableResult
+    public func startWithPrompt() -> Bool {
+        if start() { return true }
+        requestPermission()
+        return false
     }
 
     /// 停止监听并释放所有事件源
@@ -179,6 +186,16 @@ public final class EventController {
     public func removeAllSnippets() {
         snippets.removeAll()
         trie.clear()
+    }
+
+    /// 已加载的缩写列表（调试用）
+    var loadedAbbreviations: [String] {
+        Array(snippets.keys)
+    }
+
+    /// 查询缩写的展开文本（调试用）
+    func expansionFor(_ abbreviation: String) -> String? {
+        snippets[abbreviation]
     }
 
     // MARK: - Permission
@@ -278,7 +295,6 @@ public final class EventController {
         }
 
         // 获取按键的 Unicode 字符
-        // CGEvent 的 keyboardGetUnicodeString 最多返回 20 个 UTF-16 码元
         var unicodeLength: Int = 0
         var unicodeBuffer = [UniChar](repeating: 0, count: 20)
         event.keyboardGetUnicodeString(
@@ -293,9 +309,10 @@ public final class EventController {
         }
 
         let char = Character(UnicodeScalar(unicodeBuffer[0])!)
+        let kc = event.getIntegerValueField(.keyboardEventKeycode)
 
         // 退格键：从缓冲区移除最后一个字符
-        if event.getIntegerValueField(.keyboardEventKeycode) == 51 { // kVK_Delete
+        if kc == 51 { // kVK_Delete
             DispatchQueue.main.async { [weak self] in
                 guard let self = self, !self.inputBuffer.isEmpty else { return }
                 self.inputBuffer.removeLast()
@@ -317,10 +334,31 @@ public final class EventController {
             DispatchQueue.main.async { [weak self] in
                 self?.inputBuffer = ""
             }
-        } else if char.isLetter || char.isNumber || char == "_" || char == "-" {
-            // 追加到缓冲区
+        } else if char.isLetter || char.isNumber || char == "_" || char == "-" || char == "," {
+            // 追加到缓冲区，从尾部往前搜缩写后缀（支持 buffer 中有"噪声"字符）
             DispatchQueue.main.async { [weak self] in
-                self?.inputBuffer.append(char)
+                guard let self = self else { return }
+                self.inputBuffer.append(char)
+                let buffer = self.inputBuffer
+
+                // 从最长后缀开始尝试匹配
+                for i in buffer.indices {
+                    let suffix = String(buffer[i...])
+                    let (matched, expansion) = self.trie.search(suffix)
+                    if expansion != nil {
+                        // 完整匹配 → 即时触发
+                        self.handleTrigger(nil)
+                        self.inputBuffer = ""
+                        return
+                    }
+                    if matched {
+                        // 部分前缀匹配（如 "d" 是 "ddm" 的前缀）→ 保留 buffer 等待更多输入
+                        return
+                    }
+                    // matched==false → 这个后缀长度不可能匹配，试试更短的
+                }
+                // 所有后缀都不匹配 → 清空（buffer 无意义的积累）
+                self.inputBuffer = ""
             }
         } else {
             // 其他非 ASCII / 非字母字符：重置缓冲区
@@ -335,32 +373,45 @@ public final class EventController {
     // MARK: - Trigger Handling
 
     /// 触发字符到达时的匹配与注入逻辑（主线程调用）
-    private func handleTrigger(_ triggerChar: Character) {
+    /// - Parameter triggerChar: 触发字符；nil 表示即时触发（无外部触发字符）
+    private func handleTrigger(_ triggerChar: Character?) {
         guard !isInjecting else { return }
         let buffer = inputBuffer
         guard !buffer.isEmpty else { return }
 
-        // 检查前缀树
-        let (matched, expansion) = trie.search(buffer)
-        guard matched, let text = expansion else { return }
-
-        // 检查安全文本域
-        guard !isSecureTextField() else { return }
-
-        // 执行注入
-        inject(abbreviation: buffer, expansion: text, triggerChar: triggerChar)
+        // 从最长后缀搜，找匹配的缩写（和即时触发使用相同的后缀扫描逻辑）
+        for i in buffer.indices {
+            let suffix = String(buffer[i...])
+            let (matched, expansion) = trie.search(suffix)
+            if let text = expansion {
+                // 完整匹配找到
+                guard !isSecureTextField() else { return }
+                inject(abbreviation: suffix, expansion: text, triggerChar: triggerChar)
+                return
+            }
+            if matched {
+                // 部分前缀匹配（如 "d" 是 "ddm" 的前缀）→ 不继续扫更短后缀
+                return
+            }
+        }
     }
 
     // MARK: - Text Injection
 
     /// 注入展开文本——核心序列：
-    /// 1. discardMarkedText（清除输入法缓冲区）
-    /// 2. 延时 5ms（等待 discard 生效）
-    /// 3. 发送退格删除缩写字符
-    /// 4. 通过 keyboardSetUnicodeString 注入展开文本
-    /// 5. 注入触发字符
-    private func inject(abbreviation: String, expansion: String, triggerChar: Character) {
+    /// 1. 通过 VariableProcessor 处理变量占位符
+    /// 2. discardMarkedText（清除输入法缓冲区）
+    /// 3. 延时 5ms（等待 discard 生效）
+    /// 4. 发送退格删除缩写字符
+    /// 5. 通过 keyboardSetUnicodeString 注入展开文本
+    /// 6. 注入触发字符
+    /// 7. 移动光标到 {cursor} 位置
+    private func inject(abbreviation: String, expansion: String, triggerChar: Character?) {
         isInjecting = true
+
+        // Step 0: 处理变量占位符
+        let processor = VariableProcessor()
+        let (processedText, cursorOffset) = processor.process(text: expansion)
 
         // Step 1: 清除输入法组合缓冲区
         NSTextInputContext.current?.discardMarkedText()
@@ -377,10 +428,18 @@ public final class EventController {
             }
 
             // Step 4: 注入展开文本（Unicode 方式，绕过键盘布局）
-            self.postUnicodeString(expansion)
+            self.postUnicodeString(processedText)
 
-            // Step 5: 注入触发字符
-            self.postUnicodeString(String(triggerChar))
+            // Step 5: 注入触发字符（即时触发时跳过）
+            if let tc = triggerChar {
+                self.postUnicodeString(String(tc))
+            }
+
+            // Step 6: 移动光标到 {cursor} 位置
+            if cursorOffset >= 0 {
+                let triggerLen = triggerChar != nil ? 1 : 0
+                self.moveCursorLeft(by: processedText.count + triggerLen - cursorOffset)
+            }
 
             self.isInjecting = false
         }
@@ -417,6 +476,20 @@ public final class EventController {
         // keyUp
         guard let keyUpEvent = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else { return }
         keyUpEvent.post(tap: .cghidEventTap)
+    }
+
+    /// 向左移动光标 n 个字符（发送左箭头按键）
+    private func moveCursorLeft(by count: Int) {
+        guard count > 0, let source = CGEventSource(stateID: .privateState) else { return }
+        for _ in 0..<count {
+            guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0x7B, keyDown: true), // kVK_LeftArrow
+                  let up = CGEvent(keyboardEventSource: source, virtualKey: 0x7B, keyDown: false)
+            else { continue }
+            down.setIntegerValueField(.eventSourceUserData, value: Self.injectionTag)
+            up.setIntegerValueField(.eventSourceUserData, value: Self.injectionTag)
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
+        }
     }
 
     // MARK: - Secure Field Detection

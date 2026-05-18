@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - 主窗口视图
+// MARK: - 主窗口视图（暗色液态玻璃主题）
 
 struct SnippetManagerView: View {
     @ObservedObject var manager: SnippetManager
@@ -8,28 +8,35 @@ struct SnippetManagerView: View {
     @State private var showNewGroupAlert = false
     @State private var showRenameGroupAlert = false
     @State private var renameTarget: SnippetGroup?
+    @State private var hoverAddGroup = false
+
+    // MARK: - 配色常量
+
+    private let borderSubtle = Color.primary.opacity(0.08)
 
     var body: some View {
         NavigationSplitView {
-            // 左侧：分组列表
             groupSidebar
                 .frame(minWidth: 140)
                 .navigationSplitViewColumnWidth(min: 140, ideal: 180, max: 220)
-        } detail: {
-            // 右侧：片段列表
+        } content: {
             snippetContent
-                .frame(minWidth: 400)
+                .frame(minWidth: 300)
+        } detail: {
+            detailPanel
+                .frame(minWidth: 280)
+                .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 400)
         }
         .navigationSplitViewStyle(.balanced)
-        .frame(minWidth: 600, minHeight: 400, idealHeight: 500)
-        .toolbar {
-            toolbarContent
-        }
+        .frame(minWidth: 800, minHeight: 480, idealHeight: 560)
+        .toolbar { toolbarContent }
+        .preferredColorScheme(nil)  // 跟随系统外观
         .sheet(isPresented: Binding(
             get: { manager.editMode != .inactive },
             set: { if !$0 { manager.editMode = .inactive } }
         )) {
             SnippetEditView(manager: manager)
+                .preferredColorScheme(nil)  // 跟随系统外观
         }
         .alert("新建分组", isPresented: $showNewGroupAlert) {
             TextField("分组名称", text: $groupNameInput)
@@ -44,7 +51,7 @@ struct SnippetManagerView: View {
         }
         .alert("重命名分组", isPresented: $showRenameGroupAlert) {
             TextField("分组名称", text: $groupNameInput)
-            Button("取消", role: .cancel) { groupNameInput = "" }
+            Button("取消", role: .cancel) { groupNameInput = ""; renameTarget = nil }
             Button("确定") {
                 let name = groupNameInput.trimmingCharacters(in: .whitespaces)
                 if !name.isEmpty, let target = renameTarget {
@@ -63,51 +70,89 @@ struct SnippetManagerView: View {
     @ViewBuilder
     private var groupSidebar: some View {
         VStack(spacing: 0) {
-            // 标题
+            // 标题栏安全区（给红绿灯留空间）
+            Color.clear.frame(height: 24)
+
+            // 标题行
             HStack {
                 Text("分组")
-                    .font(.headline)
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
                 Spacer()
+                Button {
+                    groupNameInput = ""
+                    showNewGroupAlert = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .frame(width: 24, height: 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.primary.opacity(hoverAddGroup ? 0.14 : 0.07))
+                )
+                .onHover { hoverAddGroup = $0 }
+                .help("新建分组")
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 8)
 
-            Divider()
+            Divider().overlay(borderSubtle)
+                .padding(.bottom, 4)
 
             // 分组列表
             List(selection: $manager.selectedGroupID) {
                 ForEach(manager.groups) { group in
-                    HStack {
-                        Image(systemName: "folder")
-                            .foregroundColor(.accentColor)
-                            .font(.system(size: 12))
-                        Text(group.name)
-                            .lineLimit(1)
-                        Spacer()
-                        Text("\(group.snippets.count)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.vertical, 2)
-                    .contextMenu {
-                        Button("重命名") {
-                            renameTarget = group
-                            groupNameInput = group.name
-                            showRenameGroupAlert = true
-                        }
-                        Divider()
-                        Button("删除", role: .destructive) {
-                            manager.deleteGroup(group)
-                        }
-                        .disabled(manager.groups.count <= 1)
-                    }
-                    .tag(group.id)
+                    groupRow(group)
+                        .contextMenu { groupContextMenu(group) }
+                        .tag(group.id)
                 }
                 .onMove(perform: manager.moveGroup)
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .padding(.leading, -8)
         }
+    }
+
+    private func groupRow(_ group: SnippetGroup) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "folder")
+                .font(.system(size: 11))
+                .foregroundColor(.blue.opacity(0.7))
+
+            Text(group.name)
+                .font(.system(size: 13, weight: .regular))
+                .lineLimit(1)
+
+            Spacer()
+
+            Text("\(group.snippets.count)")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(Color.white.opacity(0.05))
+                .clipShape(Capsule())
+        }
+        .padding(.vertical, 3)
+    }
+
+    @ViewBuilder
+    private func groupContextMenu(_ group: SnippetGroup) -> some View {
+        Button("重命名") {
+            renameTarget = group
+            groupNameInput = group.name
+            showRenameGroupAlert = true
+        }
+        Divider()
+        Button("删除", role: .destructive) {
+            manager.deleteGroup(group)
+        }
+        .disabled(manager.groups.count <= 1)
     }
 
     // MARK: - 片段内容区
@@ -115,70 +160,73 @@ struct SnippetManagerView: View {
     @ViewBuilder
     private var snippetContent: some View {
         VStack(spacing: 0) {
+            // 搜索栏
+            searchBar
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 10)
+
+            Divider().overlay(borderSubtle)
+
             if let group = manager.selectedGroup {
                 snippetHeader(group: group)
-                Divider()
-                snippetList(group: group)
+                Divider().overlay(borderSubtle)
+                snippetListArea(group: group)
             } else {
                 emptyState
             }
         }
     }
 
+    // MARK: 搜索栏
+
+    private var searchBar: some View {
+        HStack(spacing: 0) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .padding(.leading, 10)
+
+            TextField("搜索片段…", text: $manager.searchQuery)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .padding(.vertical, 7)
+                .padding(.horizontal, 6)
+        }
+        .background(Color.white.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(borderSubtle))
+    }
+
+    // MARK: 片段列表
+
     private func snippetHeader(group: SnippetGroup) -> some View {
-        HStack {
+        HStack(spacing: 6) {
             Text(group.name)
-                .font(.headline)
-            Text("· \(group.snippets.count) 个片段")
-                .font(.subheadline)
+                .font(.system(size: 13, weight: .semibold))
+            Text("·")
+                .foregroundColor(.secondary)
+            let count = manager.filteredSnippets.count
+            Text("\(count) 个片段")
+                .font(.system(size: 12))
                 .foregroundColor(.secondary)
             Spacer()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
     }
 
     @ViewBuilder
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "text.word.spacing")
-                .font(.system(size: 36))
-                .foregroundColor(.secondary)
-            if manager.groups.isEmpty {
-                Text("点击 + 按钮创建第一个分组")
-                    .foregroundColor(.secondary)
-            } else {
-                Text("从左侧选择一个分组")
-                    .foregroundColor(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    @ViewBuilder
-    private func snippetList(group: SnippetGroup) -> some View {
-        if group.snippets.isEmpty {
-            VStack(spacing: 12) {
-                Image(systemName: "plus.square")
-                    .font(.system(size: 28))
-                    .foregroundColor(.secondary)
-                Text("点击 + 按钮新建片段")
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private func snippetListArea(group: SnippetGroup) -> some View {
+        let snippets = manager.filteredSnippets
+        if snippets.isEmpty {
+            emptySnippetState(hasSearch: !manager.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty)
         } else {
             List(selection: $manager.selectedSnippetID) {
-                ForEach(group.snippets) { snippet in
+                ForEach(snippets) { snippet in
                     snippetRow(snippet, group: group)
-                        .contextMenu {
-                            Button("编辑") {
-                                manager.editMode = .existing(snippet)
-                            }
-                            Divider()
-                            Button("删除", role: .destructive) {
-                                manager.deleteSnippet(snippet, fromGroup: group.id)
-                            }
-                        }
+                        .tag(snippet.id)
+                        .contextMenu { snippetContextMenu(snippet, group: group) }
                 }
                 .onMove { source, dest in
                     manager.moveSnippet(from: source, to: dest, inGroup: group.id)
@@ -189,32 +237,205 @@ struct SnippetManagerView: View {
     }
 
     private func snippetRow(_ snippet: Snippet, group: SnippetGroup) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            // 缩写
+        VStack(alignment: .leading, spacing: 4) {
+            // 缩写（等宽字体 + 强调色）
             HStack(spacing: 6) {
                 Text(snippet.abbreviation)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.accentColor)
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.blue)
+
                 if !snippet.description.isEmpty {
                     Text("—")
                         .foregroundColor(.secondary)
                     Text(snippet.description)
-                        .font(.caption)
+                        .font(.system(size: 11))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
             }
-            // 展开文本预览
-            Text(snippet.expandedText)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .lineLimit(2)
-                .truncationMode(.tail)
+
+            // 展开文本预览（语法高亮）
+            SyntaxHighlightedText(text: snippet.expandedText, singleLine: true)
         }
-        .padding(.vertical, 2)
-        .onTapGesture(count: 2) {
+        .padding(.vertical, 5)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func snippetContextMenu(_ snippet: Snippet, group: SnippetGroup) -> some View {
+        Button("编辑") {
             manager.editMode = .existing(snippet)
         }
+        Divider()
+        Button("删除", role: .destructive) {
+            manager.deleteSnippet(snippet, fromGroup: group.id)
+        }
+    }
+
+    // MARK: - 详情面板
+
+    @ViewBuilder
+    private var detailPanel: some View {
+        if let group = manager.selectedGroup,
+           let sid = manager.selectedSnippetID,
+           let snippet = group.snippets.first(where: { $0.id == sid }) {
+            snippetDetail(snippet)
+        } else {
+            detailEmpty
+        }
+    }
+
+    private func snippetDetail(_ snippet: Snippet) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // 标题栏
+            HStack {
+                Text("片段详情")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
+                Spacer()
+                detailActionButton(symbol: "pencil", help: "编辑 (⌘E)") {
+                    manager.editMode = .existing(snippet)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+
+            Divider().overlay(borderSubtle)
+
+            // 详情体
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    // 缩写标签
+                    Text(snippet.abbreviation)
+                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.blue.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                    // 描述
+                    if !snippet.description.isEmpty {
+                        Text(snippet.description)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+
+                    // 展开文本
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("展开文本")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
+                            .tracking(0.6)
+
+                        SyntaxHighlightedText(text: snippet.expandedText)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.white.opacity(0.04))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(borderSubtle))
+                    }
+
+                    // 变量图例
+                    variableLegend
+                }
+                .padding(16)
+            }
+        }
+    }
+
+    /// 变量颜色图例
+    private var variableLegend: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("变量说明")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.6)
+
+            HStack(spacing: 12) {
+                legendItem(color: .green, label: "{clipboard}")
+                legendItem(color: .orange, label: "{enter}")
+                legendItem(color: .secondary, label: "{cursor}")
+                legendItem(color: .blue, label: "{datetime:…}")
+            }
+        }
+    }
+
+    private func legendItem(color: Color, label: String) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(label)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private var detailEmpty: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "text.word.spacing")
+                .font(.system(size: 28))
+                .foregroundColor(.secondary.opacity(0.3))
+            Text("选择片段查看详情")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func detailActionButton(symbol: String, help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 11))
+        }
+        .buttonStyle(.plain)
+        .frame(width: 24, height: 24)
+        .background(Color.white.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .help(help)
+    }
+
+    // MARK: - 空状态
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "text.word.spacing")
+                .font(.system(size: 32))
+                .foregroundColor(.secondary.opacity(0.3))
+            if manager.groups.isEmpty {
+                Text("点击 + 按钮创建第一个分组")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            } else {
+                Text("从左侧选择一个分组")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func emptySnippetState(hasSearch: Bool) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: hasSearch ? "magnifyingglass" : "text.word.spacing")
+                .font(.system(size: 26))
+                .foregroundColor(.secondary.opacity(0.3))
+            if hasSearch {
+                Text("没有匹配的片段")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            } else {
+                Text("点击右上角 + 新建片段")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 工具栏
@@ -222,15 +443,6 @@ struct SnippetManagerView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup {
-            Button {
-                groupNameInput = ""
-                showNewGroupAlert = true
-            } label: {
-                Image(systemName: "folder.badge.plus")
-            }
-            .help("新建分组")
-            .accessibilityLabel("新建分组")
-
             Button {
                 if let gid = manager.selectedGroupID {
                     manager.editMode = .new(inGroup: gid)
@@ -241,33 +453,12 @@ struct SnippetManagerView: View {
                 Image(systemName: "plus")
             }
             .help("新建片段")
-            .accessibilityLabel("新建片段")
-
-            Button {
-                if let sid = manager.selectedSnippetID,
-                   let snippet = manager.selectedGroupSnippets.first(where: { $0.id == sid }) {
-                    manager.editMode = .existing(snippet)
-                }
-            } label: {
-                Image(systemName: "pencil")
-            }
-            .help("编辑选中片段")
-            .accessibilityLabel("编辑选中片段")
-            .disabled(manager.selectedSnippetID == nil)
-
-            Button {
-                if let gid = manager.selectedGroupID,
-                   let sid = manager.selectedSnippetID {
-                    if let snippet = manager.selectedGroupSnippets.first(where: { $0.id == sid }) {
-                        manager.deleteSnippet(snippet, fromGroup: gid)
-                    }
-                }
-            } label: {
-                Image(systemName: "trash")
-            }
-            .help("删除选中片段")
-            .accessibilityLabel("删除选中片段")
-            .disabled(manager.selectedSnippetID == nil)
         }
     }
+}
+
+// MARK: - Preview
+
+#Preview {
+    SnippetManagerView(manager: SnippetManager())
 }

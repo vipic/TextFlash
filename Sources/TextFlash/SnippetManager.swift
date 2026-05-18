@@ -26,6 +26,22 @@ final class SnippetManager: ObservableObject {
     }
     @Published var selectedSnippetID: UUID?
 
+    // MARK: 搜索
+
+    @Published var searchQuery: String = ""
+
+    /// 当前分组中匹配搜索的片段
+    var filteredSnippets: [Snippet] {
+        let snippets = selectedGroupSnippets
+        let q = searchQuery.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return snippets }
+        return snippets.filter { snippet in
+            snippet.abbreviation.localizedCaseInsensitiveContains(q) ||
+            snippet.description.localizedCaseInsensitiveContains(q) ||
+            snippet.expandedText.localizedCaseInsensitiveContains(q)
+        }
+    }
+
     // MARK: 编辑状态（由 View 驱动）
 
     @Published var editMode: EditMode = .inactive {

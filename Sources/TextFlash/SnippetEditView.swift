@@ -70,14 +70,14 @@ struct SnippetEditView: View {
             }
             .padding()
         }
-        .frame(width: 520, height: 440)
+        .frame(minWidth: 560, minHeight: 480)
         .onAppear(perform: populateFields)
     }
 
     // MARK: - 分组选择
 
     private var groupPicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        HStack(spacing: 8) {
             Text("所属分组").font(.caption).foregroundColor(.secondary)
             Picker("", selection: $selectedGroupID) {
                 ForEach(manager.groups) { group in
@@ -85,9 +85,9 @@ struct SnippetEditView: View {
                 }
             }
             .labelsHidden()
-            .frame(maxWidth: 200)
+            .pickerStyle(.menu)
         }
-        .disabled(!isNew)  // 编辑已有片段时不改分组
+        .disabled(!isNew)
     }
 
     // MARK: - 缩写输入
@@ -137,7 +137,7 @@ struct SnippetEditView: View {
             }
             TextEditor(text: $expandedText)
                 .font(.system(.body, design: .monospaced))
-                .frame(height: 120)
+                .frame(minHeight: 160)
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
@@ -218,13 +218,10 @@ private struct VariableButton: View {
                 .padding(.vertical, 4)
                 .background(
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.accentColor.opacity(0.1))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
+                        .fill(Color.primary.opacity(0.08))
                 )
         }
+        .buttonStyle(.plain)
         .help(raw)
     }
 }
