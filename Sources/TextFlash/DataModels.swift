@@ -9,15 +9,10 @@ struct Snippet: Identifiable, Codable, Hashable {
 }
 
 /// 片段分组
-struct SnippetGroup: Identifiable, Codable, Equatable {
+struct SnippetGroup: Identifiable, Equatable {
     var id: UUID = UUID()
     var name: String
     var snippets: [Snippet] = []
-}
-
-/// 持久化容器 — 顶层 JSON 结构
-struct SnippetStore: Codable {
-    var groups: [SnippetGroup]
 }
 
 // MARK: - String 扩展

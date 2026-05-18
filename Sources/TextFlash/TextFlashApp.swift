@@ -120,14 +120,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - EventController 同步
 
     private func loadSnippetsIntoController() {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Documents/Luigi/TextFlash/data/snippets.json")
-        guard let data = try? Data(contentsOf: url),
-              let store = try? JSONDecoder().decode(SnippetStore.self, from: data)
-        else { return }
-
         EventController.shared.removeAllSnippets()
-        for group in store.groups {
+        let groups = DatabaseManager.shared.fetchAllGroups()
+        for group in groups {
             for snippet in group.snippets where !snippet.abbreviation.isEmpty {
                 EventController.shared.addSnippet(
                     snippet.abbreviation,

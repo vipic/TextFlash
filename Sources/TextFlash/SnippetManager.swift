@@ -10,7 +10,7 @@ extension Notification.Name {
 
 // MARK: - SnippetManager
 
-/// 片段管理器的 ViewModel — 负责分组/片段的 CRUD、持久化，以及通知后端引擎
+/// 片段管理器的 ViewModel — 负责分组/片段的 CRUD，持久化到 SQLite，以及通知后端引擎
 @MainActor
 final class SnippetManager: ObservableObject {
 
@@ -80,18 +80,10 @@ final class SnippetManager: ObservableObject {
 
     // MARK: 持久化
 
-    private let storeURL: URL
+    private let db = DatabaseManager.shared
 
-    init(dataDirectory: URL? = nil) {
-        let dir: URL
-        if let dataDirectory {
-            dir = dataDirectory
-        } else {
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            dir = home.appendingPathComponent("Documents/Luigi/TextFlash/data")
-        }
-        self.storeURL = dir.appendingPathComponent("snippets.json")
-        load()
+    init() {
+        reload()
         if groups.isEmpty {
             createDefaultGroup()
         }
@@ -101,28 +93,34 @@ final class SnippetManager: ObservableObject {
 
     func addGroup(name: String) {
         let group = SnippetGroup(name: name)
+        let sortOrder = groups.count
+        db.insertGroup(id: group.id, name: name, sortOrder: sortOrder)
         groups.append(group)
         selectedGroupID = group.id
-        saveAndNotify()
+        notify()
     }
 
     func renameGroup(_ group: SnippetGroup, to name: String) {
         guard let idx = groups.firstIndex(where: { $0.id == group.id }) else { return }
+        db.updateGroupName(id: group.id, name: name)
         groups[idx].name = name
-        saveAndNotify()
+        notify()
     }
 
     func deleteGroup(_ group: SnippetGroup) {
+        db.deleteGroup(id: group.id)
         groups.removeAll { $0.id == group.id }
         if selectedGroupID == group.id {
             selectedGroupID = groups.first?.id
         }
-        saveAndNotify()
+        notify()
     }
 
     func moveGroup(from source: IndexSet, to destination: Int) {
         groups.move(fromOffsets: source, toOffset: destination)
-        saveAndNotify()
+        let orders = groups.enumerated().map { ($0.element.id, $0.offset) }
+        db.updateGroupSortOrders(orders)
+        notify()
     }
 
     // MARK: - 片段操作
@@ -134,101 +132,93 @@ final class SnippetManager: ObservableObject {
             expandedText: expandedText,
             description: description
         )
+        let sortOrder = groups[idx].snippets.count
+        db.insertSnippet(
+            id: snippet.id,
+            groupID: groupID,
+            abbreviation: abbreviation,
+            expandedText: expandedText,
+            description: description,
+            sortOrder: sortOrder
+        )
         groups[idx].snippets.append(snippet)
         selectedSnippetID = snippet.id
-        saveAndNotify()
+        notify()
     }
 
     func updateSnippet(_ snippet: Snippet, abbreviation: String, expandedText: String, description: String, inGroup groupID: UUID) {
         guard let gIdx = groups.firstIndex(where: { $0.id == groupID }),
               let sIdx = groups[gIdx].snippets.firstIndex(where: { $0.id == snippet.id })
         else { return }
+        db.updateSnippet(id: snippet.id, abbreviation: abbreviation, expandedText: expandedText, description: description)
         groups[gIdx].snippets[sIdx].abbreviation = abbreviation
         groups[gIdx].snippets[sIdx].expandedText = expandedText
         groups[gIdx].snippets[sIdx].description = description
-        saveAndNotify()
+        notify()
     }
 
     func deleteSnippet(_ snippet: Snippet, fromGroup groupID: UUID) {
         guard let gIdx = groups.firstIndex(where: { $0.id == groupID }) else { return }
+        db.deleteSnippet(id: snippet.id)
         groups[gIdx].snippets.removeAll { $0.id == snippet.id }
         if selectedSnippetID == snippet.id {
             selectedSnippetID = nil
         }
-        saveAndNotify()
+        notify()
     }
 
     func deleteSnippets(_ snippets: Set<Snippet>, fromGroup groupID: UUID) {
         guard let gIdx = groups.firstIndex(where: { $0.id == groupID }) else { return }
         let ids = Set(snippets.map { $0.id })
+        db.deleteSnippets(ids: ids)
         groups[gIdx].snippets.removeAll { ids.contains($0.id) }
         if let sel = selectedSnippetID, ids.contains(sel) {
             selectedSnippetID = nil
         }
-        saveAndNotify()
+        notify()
     }
 
     func moveSnippet(from source: IndexSet, to destination: Int, inGroup groupID: UUID) {
         guard let gIdx = groups.firstIndex(where: { $0.id == groupID }) else { return }
         groups[gIdx].snippets.move(fromOffsets: source, toOffset: destination)
-        saveAndNotify()
+        let orders = groups[gIdx].snippets.enumerated().map { ($0.element.id, $0.offset) }
+        db.updateSnippetSortOrders(orders)
+        notify()
     }
 
     func moveSnippet(_ snippet: Snippet, from sourceGroupID: UUID, to targetGroupID: UUID) {
         guard let srcIdx = groups.firstIndex(where: { $0.id == sourceGroupID }),
               let tgtIdx = groups.firstIndex(where: { $0.id == targetGroupID })
         else { return }
+        db.moveSnippet(id: snippet.id, toGroup: targetGroupID, sortOrder: groups[tgtIdx].snippets.count)
         groups[srcIdx].snippets.removeAll { $0.id == snippet.id }
         groups[tgtIdx].snippets.append(snippet)
         if selectedGroupID == sourceGroupID {
             selectedGroupID = targetGroupID
             selectedSnippetID = snippet.id
         }
-        saveAndNotify()
+        notify()
     }
 
     // MARK: - 内部方法
 
+    /// 从数据库重新加载全部数据
+    private func reload() {
+        groups = db.fetchAllGroups()
+        if selectedGroupID == nil {
+            selectedGroupID = groups.first?.id
+        }
+    }
+
     private func createDefaultGroup() {
         let group = SnippetGroup(name: "通用")
+        db.insertGroup(id: group.id, name: "通用", sortOrder: 0)
         groups.append(group)
         selectedGroupID = group.id
-        saveAndNotify()
+        notify()
     }
 
-    private func saveAndNotify() {
-        if save() {
-            NotificationCenter.default.post(name: .textFlashSnippetsDidChange, object: self)
-        }
-    }
-
-    private func load() {
-        let fm = FileManager.default
-        guard fm.fileExists(atPath: storeURL.path) else { return }
-        do {
-            let data = try Data(contentsOf: storeURL)
-            let store = try JSONDecoder().decode(SnippetStore.self, from: data)
-            groups = store.groups
-            if selectedGroupID == nil {
-                selectedGroupID = groups.first?.id
-            }
-        } catch {
-            print("[SnippetManager] 加载失败: \(error.localizedDescription)")
-        }
-    }
-
-    private func save() -> Bool {
-        let fm = FileManager.default
-        let dir = storeURL.deletingLastPathComponent()
-        do {
-            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
-            let store = SnippetStore(groups: groups)
-            let data = try JSONEncoder().encode(store)
-            try data.write(to: storeURL, options: .atomic)
-            return true
-        } catch {
-            print("[SnippetManager] 保存失败: \(error.localizedDescription)")
-            return false
-        }
+    private func notify() {
+        NotificationCenter.default.post(name: .textFlashSnippetsDidChange, object: self)
     }
 }
