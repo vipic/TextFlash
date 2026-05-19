@@ -8,8 +8,8 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="TextFlash"
 BUILD_DIR="$PROJECT_DIR/.build/debug"
 BUNDLE_ID="com.nekutai.textflash.dev"
-# 复用 Pastry Dev 证书（和 Pastry 共用同一开发者身份）
-IDENTITY="${CODESIGN_IDENTITY:-Pastry Dev}"
+# 签名身份从环境变量 CODESIGN_IDENTITY 读取，未配置则 ad-hoc
+IDENTITY="${CODESIGN_IDENTITY:-}"
 
 cd "$PROJECT_DIR"
 
@@ -89,13 +89,13 @@ if $BIN_CHANGED || $NEED_BUNDLE; then
         TARGET_TO_SIGN="$DEST"
     fi
 
-    # 选签名身份：优先 Pastry Dev，不存在则 ad-hoc
-    if security find-identity -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
+    # 选签名身份：配置了且在钥匙串中存在则用，否则 ad-hoc
+    if [ -n "$IDENTITY" ] && security find-identity -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
         echo "🔐 签名: $IDENTITY"
         codesign --force --deep --sign "$IDENTITY" "$TARGET_TO_SIGN" 2>&1
         SIGNED_WITH="$IDENTITY"
     else
-        echo "⚠️  未找到 '$IDENTITY' 证书，使用 ad-hoc 签名（TCC 权限不会保留）"
+        [ -n "$IDENTITY" ] && echo "⚠️  未找到 '$IDENTITY' 证书，使用 ad-hoc 签名（TCC 权限不会保留）"
         codesign --force --deep --sign - "$TARGET_TO_SIGN" 2>&1
         SIGNED_WITH="ad-hoc"
     fi

@@ -15,7 +15,7 @@ VERSION="${1:-0.1.0}"
 VERSION="${VERSION#v}"
 BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
-IDENTITY="${CODESIGN_IDENTITY:-TextFlash Release}"
+IDENTITY="${CODESIGN_IDENTITY:-}"
 
 # 解析 --publish 标志
 PUBLISH=false
@@ -52,6 +52,12 @@ mkdir -p "$STAGING/$APP_NAME.app/Contents/Resources"
 
 cp "$BIN" "$STAGING/$APP_NAME.app/Contents/MacOS/$APP_NAME"
 
+# 拷贝应用图标
+if [ -f "$PROJECT_DIR/AppIcon.icns" ]; then
+    cp "$PROJECT_DIR/AppIcon.icns" "$STAGING/$APP_NAME.app/Contents/Resources/AppIcon.icns"
+    echo "   📱 AppIcon.icns → .app bundle"
+fi
+
 cat > "$STAGING/$APP_NAME.app/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -67,6 +73,8 @@ cat > "$STAGING/$APP_NAME.app/Contents/Info.plist" << PLIST
     <string>$BUILD</string>
     <key>CFBundleShortVersionString</key>
     <string>$VERSION</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
@@ -84,10 +92,13 @@ echo ""
 echo "━━━ 4/5 代码签名 ━━━"
 
 CERT_OK=true
-if security find-identity -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
+if [ -n "$IDENTITY" ] && security find-identity -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
     echo "   签名身份: $IDENTITY"
-else
+elif [ -n "$IDENTITY" ]; then
     echo "⚠️  未找到 \"$IDENTITY\" 代码签名证书，回退 ad-hoc"
+    CERT_OK=false
+else
+    echo "   未配置签名证书，使用 ad-hoc"
     CERT_OK=false
 fi
 

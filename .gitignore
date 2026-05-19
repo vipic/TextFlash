@@ -1,6 +1,18 @@
+# ── Swift / SPM ──
 .build/
+.swiftpm/
+Package.resolved
+
+# ── macOS ──
 .DS_Store
+**/.DS_Store
+
+# ── Build outputs ──
+*.app
+*.dSYM
 *.dmg
-/TextFlash
-*.dSYM/
-textflash-panel.html
+.release_staging/
+
+# ── IDE ──
+.idea/
+.vscode/
