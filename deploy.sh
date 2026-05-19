@@ -40,6 +40,11 @@ if $NEED_BUNDLE; then
     mkdir -p "$STAGING/$APP_NAME Dev.app/Contents/MacOS"
     mkdir -p "$STAGING/$APP_NAME Dev.app/Contents/Resources"
 
+    # 拷贝应用图标
+    if [ -f "$PROJECT_DIR/AppIcon.icns" ]; then
+        cp "$PROJECT_DIR/AppIcon.icns" "$STAGING/$APP_NAME Dev.app/Contents/Resources/AppIcon.icns"
+    fi
+
     cat > "$STAGING/$APP_NAME Dev.app/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -55,6 +60,8 @@ if $NEED_BUNDLE; then
     <string>1</string>
     <key>CFBundleShortVersionString</key>
     <string>0.1.0-dev</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
