@@ -45,6 +45,8 @@ public final class EventController {
     var isRunning = false
     /// 是否正在注入（调试用）
     var isInjecting = false
+    /// Event tap 自动恢复次数（调试用）
+    var tapRecoveryCount = 0
     /// 前缀树
     private let matcher = SnippetMatcher()
     /// 缩写→展开文本字典（用于快速查询完整展开）
@@ -248,6 +250,11 @@ public final class EventController {
         type: CGEventType,
         event: CGEvent
     ) -> Unmanaged<CGEvent>? {
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            handleDisabledEventTap()
+            return Unmanaged.passUnretained(event)
+        }
+
         // 过滤自身注入的事件
         let tag = event.getIntegerValueField(.eventSourceUserData)
         if tag == Self.injectionTag {
@@ -264,6 +271,16 @@ public final class EventController {
         }
 
         return shouldConsume ? nil : Unmanaged.passUnretained(event)
+    }
+
+    private func handleDisabledEventTap() {
+        inputBuffer = ""
+        guard let tap = eventTap else {
+            isRunning = false
+            return
+        }
+        CGEvent.tapEnable(tap: tap, enable: true)
+        tapRecoveryCount += 1
     }
 
     /// Updates the input buffer and returns true when the original keyDown event

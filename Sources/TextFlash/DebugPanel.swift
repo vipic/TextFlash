@@ -7,6 +7,8 @@ struct DebugPanel: View {
     @State private var isRunning = false
     @State private var isInjecting = false
     @State private var snippetCount = 0
+    @State private var exclusionCount = 0
+    @State private var tapRecoveryCount = 0
     @State private var snippetList: [String] = []
     @State private var logLines: [String] = []
 
@@ -35,6 +37,10 @@ struct DebugPanel: View {
 
             // 已加载缩写
             Text("已加载 \(snippetCount) 条缩写")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Text("排除 \(exclusionCount) 个应用 · Tap 恢复 \(tapRecoveryCount) 次")
                 .font(.caption)
                 .foregroundColor(.secondary)
 
@@ -107,6 +113,8 @@ struct DebugPanel: View {
         buffer = ec.inputBuffer
         isRunning = ec.isRunning
         isInjecting = ec.isInjecting
+        exclusionCount = ec.excludedBundleIDs.count
+        tapRecoveryCount = ec.tapRecoveryCount
 
         // 读取缩写列表
         let abbrs = ec.loadedAbbreviations
