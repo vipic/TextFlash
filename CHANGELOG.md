@@ -4,6 +4,7 @@
 
 - Added a settings window with app language selection and localized menu/settings/debug strings.
 - Localized the snippet manager, snippet editor, permission prompts, and exclusion alerts.
+- Added a replacement timing setting for slower chat inputs that process deletion asynchronously.
 - Refined the debug panel layout and only show its menu entry in debug builds.
 - Copy SwiftPM resource bundles into generated development and release app bundles.
 - Fixed trigger-character expansion so TextFlash no longer leaves partial abbreviations or duplicates trigger characters.

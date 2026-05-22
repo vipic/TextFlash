@@ -39,6 +39,7 @@ final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
     private let languageKey = "TextFlashAppLanguage"
+    private let deletionDelayKey = "TextFlashDeletionSettleDelayPerCharacter"
 
     @Published var language: AppLanguage {
         didSet {
@@ -46,10 +47,17 @@ final class AppSettings: ObservableObject {
             NotificationCenter.default.post(name: .textFlashLanguageDidChange, object: self)
         }
     }
+    @Published var deletionSettleDelayPerCharacter: Double {
+        didSet {
+            UserDefaults.standard.set(deletionSettleDelayPerCharacter, forKey: deletionDelayKey)
+        }
+    }
 
     private init() {
         let stored = UserDefaults.standard.string(forKey: languageKey)
         language = stored.flatMap(AppLanguage.init(rawValue:)) ?? .system
+        let storedDelay = UserDefaults.standard.object(forKey: deletionDelayKey) as? Double
+        deletionSettleDelayPerCharacter = storedDelay ?? 20
     }
 }
 

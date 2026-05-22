@@ -12,6 +12,7 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 18) {
                 languageSection
+                timingSection
                 permissionSection
                 exclusionSection
             }
@@ -71,6 +72,27 @@ struct SettingsView: View {
                 hasAccessibilityPermission = EventController.shared.checkPermission()
             } label: {
                 Label(L10n.t("settings.permission.button"), systemImage: "lock.open")
+            }
+        }
+    }
+
+    private var timingSection: some View {
+        SettingsSection(
+            icon: "timer",
+            title: L10n.t("settings.timing.title"),
+            subtitle: L10n.t("settings.timing.subtitle")
+        ) {
+            VStack(alignment: .trailing, spacing: 5) {
+                Text(L10n.f("settings.timing.delay", settings.deletionSettleDelayPerCharacter))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .monospacedDigit()
+                Slider(value: $settings.deletionSettleDelayPerCharacter, in: 5...80, step: 5)
+                    .frame(width: 180)
+                Text(L10n.f("settings.timing.effective", settings.deletionSettleDelayPerCharacter * 3))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .monospacedDigit()
             }
         }
     }

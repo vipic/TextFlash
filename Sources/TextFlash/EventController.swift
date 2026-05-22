@@ -409,7 +409,10 @@ public final class EventController {
             }
 
             // Telegram 等应用会延迟处理退格事件；等待缩写删除落地后再写入，避免尾部被后续退格误删。
-            let deleteSettleDelay = max(20, backspaceCount * 20)
+            let delayPerCharacter = MainActor.assumeIsolated {
+                AppSettings.shared.deletionSettleDelayPerCharacter
+            }
+            let deleteSettleDelay = max(20, Int(Double(backspaceCount) * delayPerCharacter))
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(deleteSettleDelay)) { [weak self] in
                 guard let self = self else { return }
                 // Step 4: 写入展开文本。优先走 Accessibility，不触碰系统剪贴板。

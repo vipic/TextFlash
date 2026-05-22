@@ -34,6 +34,10 @@
 "settings.permission.button" = "Open Permission Settings";
 "settings.exclusions.title" = "App Exclusions";
 "settings.exclusions.subtitle" = "Manage exclusions from the menu bar. Excluded apps never trigger expansion.";
+"settings.timing.title" = "Replacement Timing";
+"settings.timing.subtitle" = "Some chat apps process deletion slowly. Increase this delay if replacements appear shifted.";
+"settings.timing.delay" = "%.0f ms per character";
+"settings.timing.effective" = "A 3-character abbreviation waits about %.0f ms";
 
 "exclusions.title" = "Exclusions";
 "exclusions.addCurrent" = "Add Current App";
