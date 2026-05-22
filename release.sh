@@ -55,6 +55,7 @@ swift build -c release
 
 BIN="$BUILD_DIR/$APP_NAME"
 test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }
+RESOURCE_BUNDLE="$BUILD_DIR/${APP_NAME}_${APP_NAME}.bundle"
 
 # ── 3. 组装 .app ──
 echo ""
@@ -70,6 +71,10 @@ cp "$BIN" "$STAGED_BIN"
 if [ -f "$PROJECT_DIR/AppIcon.icns" ]; then
     cp "$PROJECT_DIR/AppIcon.icns" "$STAGING/$APP_NAME.app/Contents/Resources/AppIcon.icns"
     echo "   📱 AppIcon.icns → .app bundle"
+fi
+if [ -d "$RESOURCE_BUNDLE" ]; then
+    cp -R "$RESOURCE_BUNDLE" "$STAGING/$APP_NAME.app/Contents/Resources/"
+    echo "   🌐 $(basename "$RESOURCE_BUNDLE") → .app bundle"
 fi
 
 # ── 4. 去除符号 ──

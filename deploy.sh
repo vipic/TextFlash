@@ -26,9 +26,11 @@ swift build
 
 BIN="$BUILD_DIR/$APP_NAME"
 test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }
+RESOURCE_BUNDLE="$BUILD_DIR/${APP_NAME}_${APP_NAME}.bundle"
 
 DEST="$HOME/Applications/$APP_NAME Dev.app"
 DEST_BIN="$DEST/Contents/MacOS/$APP_NAME"
+DEST_RESOURCES="$DEST/Contents/Resources"
 
 # ── 2. 判断是否需要组装新 bundle ──
 NEED_BUNDLE=false
@@ -47,6 +49,9 @@ if $NEED_BUNDLE; then
     # 拷贝应用图标
     if [ -f "$PROJECT_DIR/AppIcon.icns" ]; then
         cp "$PROJECT_DIR/AppIcon.icns" "$STAGING/$APP_NAME Dev.app/Contents/Resources/AppIcon.icns"
+    fi
+    if [ -d "$RESOURCE_BUNDLE" ]; then
+        cp -R "$RESOURCE_BUNDLE" "$STAGING/$APP_NAME Dev.app/Contents/Resources/"
     fi
 
     cat > "$STAGING/$APP_NAME Dev.app/Contents/Info.plist" << PLIST
@@ -99,6 +104,11 @@ if $BIN_CHANGED || $NEED_BUNDLE; then
         # 直接替换目标 app 内二进制
         pkill -f "$DEST_BIN" 2>/dev/null || true
         sleep 0.3
+        if [ -d "$RESOURCE_BUNDLE" ]; then
+            mkdir -p "$DEST_RESOURCES"
+            rm -rf "$DEST_RESOURCES/$(basename "$RESOURCE_BUNDLE")"
+            cp -R "$RESOURCE_BUNDLE" "$DEST_RESOURCES/"
+        fi
         TARGET_TO_SIGN="$DEST"
     fi
 

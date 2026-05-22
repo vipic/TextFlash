@@ -1,0 +1,64 @@
+"menu.openSnippets" = "Open Snippets…";
+"menu.settings" = "Settings…";
+"menu.pause" = "Pause Expansion";
+"menu.resume" = "Resume Expansion";
+"menu.permission.check" = "Check Accessibility Permission";
+"menu.permission.enabled" = "Accessibility: Enabled";
+"menu.permission.required" = "Accessibility: Required";
+"menu.exclude.current" = "Exclude Current App";
+"menu.exclude.named" = "Exclude %@";
+"menu.unexclude.named" = "Stop Excluding %@";
+"menu.exclusions.manage" = "Manage Exclusions…";
+"menu.debug" = "Debug Panel…";
+"menu.about" = "About TextFlash";
+"menu.quit" = "Quit TextFlash";
+
+"window.snippets" = "TextFlash — Snippets";
+"window.settings" = "TextFlash — Settings";
+"window.exclusions" = "TextFlash — Exclusions";
+"window.debug" = "TextFlash — Debug Panel";
+
+"alert.permission.enabled.title" = "Accessibility Permission Enabled";
+"alert.permission.enabled.message" = "TextFlash can monitor keyboard events and expand text.";
+"alert.focusedApp.missing.title" = "Cannot Identify Current App";
+"alert.focusedApp.missing.message" = "Switch back to the target app, then toggle exclusion from the menu bar.";
+
+"settings.title" = "Settings";
+"settings.subtitle" = "Adjust TextFlash language, permissions, and app behavior.";
+"settings.language.title" = "Language";
+"settings.language.subtitle" = "Change the display language for menus, settings, and diagnostics.";
+"settings.language.system" = "System";
+"settings.permission.title" = "Accessibility Permission";
+"settings.permission.enabled" = "Enabled. Text expansion can monitor keyboard events.";
+"settings.permission.disabled" = "Disabled. Text expansion will not work.";
+"settings.permission.button" = "Open Permission Settings";
+"settings.exclusions.title" = "App Exclusions";
+"settings.exclusions.subtitle" = "Manage exclusions from the menu bar. Excluded apps never trigger expansion.";
+
+"exclusions.title" = "Exclusions";
+"exclusions.addCurrent" = "Add Current App";
+"exclusions.clear" = "Clear Exclusions";
+"exclusions.empty" = "No excluded apps";
+"exclusions.remove" = "Remove from exclusions";
+"exclusions.addFailed.title" = "Cannot Add App";
+"exclusions.addFailed.message" = "Switch back to the target app before adding it, or use “Exclude Current App” from the menu bar first.";
+
+"debug.title" = "Debug Panel";
+"debug.subtitle" = "Inspect the event tap, input buffer, and loaded snippets in real time.";
+"debug.eventTap" = "Event Tap";
+"debug.accessibility" = "Accessibility";
+"debug.injection" = "Injection";
+"debug.running" = "Running";
+"debug.stopped" = "Stopped";
+"debug.enabled" = "Enabled";
+"debug.disabled" = "Disabled";
+"debug.idle" = "Idle";
+"debug.injecting" = "Injecting";
+"debug.buffer" = "Input Buffer";
+"debug.empty" = "Empty";
+"debug.loadedSnippets" = "Loaded Snippets";
+"debug.exclusions" = "Excluded Apps";
+"debug.tapRecoveries" = "Tap Recoveries";
+"debug.abbreviations" = "Abbreviations";
+"debug.eventLog" = "Event Log";
+"debug.noLog" = "No log yet";

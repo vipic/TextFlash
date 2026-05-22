@@ -8,7 +8,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem?
     private var snippetWindow: NSWindow?
+    private var settingsWindow: NSWindow?
+#if DEBUG
     private var debugWindow: NSWindow?
+#endif
     private var exclusionsWindow: NSWindow?
     private var pauseMenuItem: NSMenuItem?
     private var permissionMenuItem: NSMenuItem?
@@ -35,6 +38,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .textFlashExclusionsDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(languageDidChange),
+            name: .textFlashLanguageDidChange,
+            object: nil
+        )
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -44,6 +53,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - 菜单栏
 
     private func setupMenuBar() {
+        if let existing = statusItem {
+            NSStatusBar.system.removeStatusItem(existing)
+            statusItem = nil
+        }
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
             button.image = NSImage(
@@ -53,27 +66,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "打开片段管理…", action: #selector(openSnippetWindow), keyEquivalent: ""))
-        let pauseItem = NSMenuItem(title: "暂停展开", action: #selector(togglePaused), keyEquivalent: "")
+        menu.addItem(NSMenuItem(title: L10n.t("menu.openSnippets"), action: #selector(openSnippetWindow), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: L10n.t("menu.settings"), action: #selector(openSettingsWindow), keyEquivalent: ","))
+        let pauseItem = NSMenuItem(title: L10n.t("menu.pause"), action: #selector(togglePaused), keyEquivalent: "")
         menu.addItem(pauseItem)
         pauseMenuItem = pauseItem
 
-        let permissionItem = NSMenuItem(title: "检查辅助功能权限", action: #selector(checkAccessibilityPermission), keyEquivalent: "")
+        let permissionItem = NSMenuItem(title: L10n.t("menu.permission.check"), action: #selector(checkAccessibilityPermission), keyEquivalent: "")
         menu.addItem(permissionItem)
         permissionMenuItem = permissionItem
 
-        let exclusionItem = NSMenuItem(title: "排除当前应用", action: #selector(toggleFocusedAppExclusion), keyEquivalent: "")
+        let exclusionItem = NSMenuItem(title: L10n.t("menu.exclude.current"), action: #selector(toggleFocusedAppExclusion), keyEquivalent: "")
         menu.addItem(exclusionItem)
         exclusionMenuItem = exclusionItem
-        menu.addItem(NSMenuItem(title: "管理排除列表…", action: #selector(openExclusionsWindow), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: L10n.t("menu.exclusions.manage"), action: #selector(openExclusionsWindow), keyEquivalent: ""))
 
+#if DEBUG
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "调试面板…", action: #selector(openDebugWindow), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: L10n.t("menu.debug"), action: #selector(openDebugWindow), keyEquivalent: ""))
+#endif
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "关于 TextFlash", action: #selector(showAbout), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "退出 TextFlash", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: L10n.t("menu.about"), action: #selector(showAbout), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: L10n.t("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         menu.delegate = self
         statusItem?.menu = menu
+        updateMenuState()
     }
 
     // MARK: - 片段窗口
@@ -98,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "TextFlash — 片段管理"
+        window.title = L10n.t("window.snippets")
         window.titlebarAppearsTransparent = true
         window.styleMask.insert(.fullSizeContentView)
         window.isReleasedWhenClosed = false  // 关闭时不释放，手动管理生命周期
@@ -122,6 +139,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         snippetWindow = window
     }
 
+    @MainActor @objc private func openSettingsWindow() {
+        if let existing = settingsWindow {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let hostingView = NSHostingView(rootView: SettingsView())
+        hostingView.frame = NSRect(x: 0, y: 0, width: 520, height: 360)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 360),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.t("window.settings")
+        window.isReleasedWhenClosed = false
+        window.contentView = hostingView
+        window.center()
+        window.setFrameAutosaveName("TextFlashSettingsWindow")
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.settingsWindow = nil
+            }
+        }
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow = window
+    }
+
     @objc private func showAbout() {
         NSApp.orderFrontStandardAboutPanel(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -135,8 +189,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func checkAccessibilityPermission() {
         if EventController.shared.checkPermission() {
             let alert = NSAlert()
-            alert.messageText = "辅助功能权限已启用"
-            alert.informativeText = "TextFlash 可以监听键盘事件并展开文本。"
+            alert.messageText = L10n.t("alert.permission.enabled.title")
+            alert.informativeText = L10n.t("alert.permission.enabled.message")
             alert.alertStyle = .informational
             alert.runModal()
         } else {
@@ -147,8 +201,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func toggleFocusedAppExclusion() {
         guard let app = EventController.shared.toggleExclusionForFocusedApplication() else {
             let alert = NSAlert()
-            alert.messageText = "无法识别当前应用"
-            alert.informativeText = "请切回目标应用后再从菜单栏切换排除状态。"
+            alert.messageText = L10n.t("alert.focusedApp.missing.title")
+            alert.informativeText = L10n.t("alert.focusedApp.missing.message")
             alert.alertStyle = .warning
             alert.runModal()
             return
@@ -173,7 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "TextFlash — 排除列表"
+        window.title = L10n.t("window.exclusions")
         window.isReleasedWhenClosed = false
         window.contentView = hostingView
         window.center()
@@ -194,6 +248,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         exclusionsWindow = window
     }
 
+#if DEBUG
     @MainActor @objc private func openDebugWindow() {
         if let existing = debugWindow {
             existing.makeKeyAndOrderFront(nil)
@@ -202,15 +257,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let hostingView = NSHostingView(rootView: DebugPanel())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 480, height: 420)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 560, height: 520)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 520),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "TextFlash — 调试面板"
+        window.title = L10n.t("window.debug")
         window.isReleasedWhenClosed = false  // 关闭时不释放，手动管理生命周期
         window.contentView = hostingView
         window.center()
@@ -231,6 +286,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         debugWindow = window
     }
+#endif
 
     // MARK: - EventController 同步
 
@@ -255,17 +311,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateMenuState()
     }
 
+    @objc private func languageDidChange(_ notification: Notification) {
+        setupMenuBar()
+        snippetWindow?.title = L10n.t("window.snippets")
+        settingsWindow?.title = L10n.t("window.settings")
+        exclusionsWindow?.title = L10n.t("window.exclusions")
+#if DEBUG
+        debugWindow?.title = L10n.t("window.debug")
+#endif
+    }
+
     private func updateMenuState(focusedApp: FocusedApplicationInfo? = nil) {
         let controller = EventController.shared
-        pauseMenuItem?.title = controller.isPaused ? "恢复展开" : "暂停展开"
-        permissionMenuItem?.title = controller.checkPermission() ? "辅助功能权限：已启用" : "辅助功能权限：需要启用"
+        pauseMenuItem?.title = controller.isPaused ? L10n.t("menu.resume") : L10n.t("menu.pause")
+        permissionMenuItem?.title = controller.checkPermission() ? L10n.t("menu.permission.enabled") : L10n.t("menu.permission.required")
         updateStatusIcon()
 
         if let app = focusedApp ?? controller.exclusionTargetApplication() {
             let excluded = controller.excludedBundleIDs.contains(app.bundleID)
-            exclusionMenuItem?.title = excluded ? "取消排除 \(app.localizedName)" : "排除 \(app.localizedName)"
+            let key = excluded ? "menu.unexclude.named" : "menu.exclude.named"
+            exclusionMenuItem?.title = String(format: L10n.t(key), app.localizedName)
         } else {
-            exclusionMenuItem?.title = "排除当前应用"
+            exclusionMenuItem?.title = L10n.t("menu.exclude.current")
         }
     }
 
@@ -287,13 +354,14 @@ extension AppDelegate: NSMenuDelegate {
 }
 
 struct ExclusionsView: View {
+    @ObservedObject private var settings = AppSettings.shared
     @State private var excludedBundleIDs = Array(EventController.shared.excludedBundleIDs).sorted()
     @State private var exclusionErrorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("排除列表")
+                Text(L10n.t("exclusions.title"))
                     .font(.headline)
                 Spacer()
                 Button {
@@ -302,7 +370,7 @@ struct ExclusionsView: View {
                     Image(systemName: "plus")
                 }
                 .buttonStyle(.plain)
-                .help("添加当前应用")
+                .help(L10n.t("exclusions.addCurrent"))
 
                 Button {
                     clearAll()
@@ -311,7 +379,7 @@ struct ExclusionsView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(excludedBundleIDs.isEmpty)
-                .help("清空排除列表")
+                .help(L10n.t("exclusions.clear"))
             }
             .padding()
 
@@ -322,7 +390,7 @@ struct ExclusionsView: View {
                     Image(systemName: "checkmark.circle")
                         .font(.system(size: 28))
                         .foregroundColor(.secondary.opacity(0.5))
-                    Text("没有被排除的应用")
+                    Text(L10n.t("exclusions.empty"))
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -341,7 +409,7 @@ struct ExclusionsView: View {
                                 Image(systemName: "minus.circle")
                             }
                             .buttonStyle(.plain)
-                            .help("从排除列表移除")
+                            .help(L10n.t("exclusions.remove"))
                         }
                     }
                 }
@@ -351,7 +419,7 @@ struct ExclusionsView: View {
         .onReceive(NotificationCenter.default.publisher(for: .textFlashExclusionsDidChange)) { _ in
             refreshExclusions()
         }
-        .alert("无法添加应用", isPresented: Binding(
+        .alert(L10n.t("exclusions.addFailed.title"), isPresented: Binding(
             get: { exclusionErrorMessage != nil },
             set: { if !$0 { exclusionErrorMessage = nil } }
         )) {
@@ -369,7 +437,7 @@ struct ExclusionsView: View {
 
     private func addFocusedApplication() {
         guard let app = EventController.shared.exclusionTargetApplication() else {
-            exclusionErrorMessage = "请切回目标应用后再添加，或先从菜单栏使用“排除当前应用”。"
+            exclusionErrorMessage = L10n.t("exclusions.addFailed.message")
             return
         }
         var exclusions = EventController.shared.excludedBundleIDs
@@ -395,7 +463,7 @@ struct TextFlashApp: App {
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            SettingsView()
         }
     }
 }

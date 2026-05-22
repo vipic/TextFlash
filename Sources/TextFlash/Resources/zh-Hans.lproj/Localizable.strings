@@ -1,0 +1,64 @@
+"menu.openSnippets" = "打开片段管理…";
+"menu.settings" = "设置…";
+"menu.pause" = "暂停展开";
+"menu.resume" = "恢复展开";
+"menu.permission.check" = "检查辅助功能权限";
+"menu.permission.enabled" = "辅助功能权限：已启用";
+"menu.permission.required" = "辅助功能权限：需要启用";
+"menu.exclude.current" = "排除当前应用";
+"menu.exclude.named" = "排除 %@";
+"menu.unexclude.named" = "取消排除 %@";
+"menu.exclusions.manage" = "管理排除列表…";
+"menu.debug" = "调试面板…";
+"menu.about" = "关于 TextFlash";
+"menu.quit" = "退出 TextFlash";
+
+"window.snippets" = "TextFlash — 片段管理";
+"window.settings" = "TextFlash — 设置";
+"window.exclusions" = "TextFlash — 排除列表";
+"window.debug" = "TextFlash — 调试面板";
+
+"alert.permission.enabled.title" = "辅助功能权限已启用";
+"alert.permission.enabled.message" = "TextFlash 可以监听键盘事件并展开文本。";
+"alert.focusedApp.missing.title" = "无法识别当前应用";
+"alert.focusedApp.missing.message" = "请切回目标应用后再从菜单栏切换排除状态。";
+
+"settings.title" = "设置";
+"settings.subtitle" = "调整 TextFlash 的语言、权限和应用行为。";
+"settings.language.title" = "语言";
+"settings.language.subtitle" = "切换菜单、设置和诊断界面的显示语言。";
+"settings.language.system" = "跟随系统";
+"settings.permission.title" = "辅助功能权限";
+"settings.permission.enabled" = "已启用，文本展开可以正常监听键盘事件。";
+"settings.permission.disabled" = "未启用，文本展开不会生效。";
+"settings.permission.button" = "打开权限设置";
+"settings.exclusions.title" = "应用排除";
+"settings.exclusions.subtitle" = "排除列表可从菜单栏管理，排除后该应用内不会触发展开。";
+
+"exclusions.title" = "排除列表";
+"exclusions.addCurrent" = "添加当前应用";
+"exclusions.clear" = "清空排除列表";
+"exclusions.empty" = "没有被排除的应用";
+"exclusions.remove" = "从排除列表移除";
+"exclusions.addFailed.title" = "无法添加应用";
+"exclusions.addFailed.message" = "请切回目标应用后再添加，或先从菜单栏使用“排除当前应用”。";
+
+"debug.title" = "调试面板";
+"debug.subtitle" = "实时查看事件 tap、输入缓冲区和已加载片段。";
+"debug.eventTap" = "Event Tap";
+"debug.accessibility" = "辅助功能";
+"debug.injection" = "注入状态";
+"debug.running" = "运行";
+"debug.stopped" = "停止";
+"debug.enabled" = "已启用";
+"debug.disabled" = "未启用";
+"debug.idle" = "闲置";
+"debug.injecting" = "注入中";
+"debug.buffer" = "输入缓冲";
+"debug.empty" = "空";
+"debug.loadedSnippets" = "已加载片段";
+"debug.exclusions" = "排除应用";
+"debug.tapRecoveries" = "Tap 恢复";
+"debug.abbreviations" = "缩写表";
+"debug.eventLog" = "事件日志";
+"debug.noLog" = "暂无日志";

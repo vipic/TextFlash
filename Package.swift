@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "TextFlash",
+    defaultLocalization: "zh-Hans",
     platforms: [
         .macOS(.v13)
     ],
@@ -17,7 +18,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "TextFlash",
-            path: "Sources/TextFlash"
+            path: "Sources/TextFlash",
+            resources: [
+                .process("Resources")
+            ]
         ),
         .testTarget(
             name: "TextFlashTests",

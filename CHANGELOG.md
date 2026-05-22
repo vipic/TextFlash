@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added a settings window with app language selection and localized menu/settings/debug strings.
+- Refined the debug panel layout and only show its menu entry in debug builds.
+- Copy SwiftPM resource bundles into generated development and release app bundles.
 - Fixed trigger-character expansion so TextFlash no longer leaves partial abbreviations or duplicates trigger characters.
 - Added conservative secure-field handling and application exclusion controls.
 - Show accessibility permission status in the manager and debug windows.

@@ -3,6 +3,7 @@ import Combine
 
 /// 调试面板 —— 实时显示 EventController 内部状态，帮助诊断展开问题
 struct DebugPanel: View {
+    @ObservedObject private var settings = AppSettings.shared
     @State private var buffer = ""
     @State private var isRunning = false
     @State private var isInjecting = false
@@ -17,88 +18,183 @@ struct DebugPanel: View {
     private let logURL = URL(fileURLWithPath: "/tmp/textflash_events.log")
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 状态行
-            HStack(spacing: 16) {
-                statusBadge(label: "Event Tap", ok: isRunning)
-                statusBadge(label: "辅助功能", ok: hasAccessibilityPermission, okText: "已启用", failText: "未启用")
-                statusBadge(label: "注入中", ok: !isInjecting, okText: "闲置", failText: "注入中")
+        VStack(alignment: .leading, spacing: 16) {
+            header
+
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 10),
+                GridItem(.flexible(), spacing: 10),
+                GridItem(.flexible(), spacing: 10)
+            ], spacing: 10) {
+                statusCard(
+                    title: L10n.t("debug.eventTap"),
+                    value: isRunning ? L10n.t("debug.running") : L10n.t("debug.stopped"),
+                    systemImage: isRunning ? "antenna.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right.slash",
+                    tint: isRunning ? .green : .red
+                )
+                statusCard(
+                    title: L10n.t("debug.accessibility"),
+                    value: hasAccessibilityPermission ? L10n.t("debug.enabled") : L10n.t("debug.disabled"),
+                    systemImage: hasAccessibilityPermission ? "checkmark.shield.fill" : "exclamationmark.shield.fill",
+                    tint: hasAccessibilityPermission ? .green : .orange
+                )
+                statusCard(
+                    title: L10n.t("debug.injection"),
+                    value: isInjecting ? L10n.t("debug.injecting") : L10n.t("debug.idle"),
+                    systemImage: isInjecting ? "keyboard.badge.ellipsis" : "keyboard",
+                    tint: isInjecting ? .blue : .secondary
+                )
             }
 
-            // Buffer 显示
-            HStack {
-                Text("Buffer:")
-                    .font(.headline)
-                Text(buffer.isEmpty ? "(空)" : "\"\(buffer)\"")
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundColor(buffer.isEmpty ? .secondary : .primary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.06)))
-            }
-
-            // 已加载缩写
-            Text("已加载 \(snippetCount) 条缩写")
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            Text("排除 \(exclusionCount) 个应用 · Tap 恢复 \(tapRecoveryCount) 次")
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            if !snippetList.isEmpty {
-                ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(snippetList, id: \.self) { item in
-                            Text(item)
-                                .font(.system(.caption, design: .monospaced))
-                        }
-                    }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    metric(label: L10n.t("debug.loadedSnippets"), value: "\(snippetCount)")
+                    metric(label: L10n.t("debug.exclusions"), value: "\(exclusionCount)")
+                    metric(label: L10n.t("debug.tapRecoveries"), value: "\(tapRecoveryCount)")
+                    Spacer()
                 }
-                .frame(maxHeight: 100)
-                .padding(6)
-                .background(RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.04)))
-            }
 
-            Divider()
-
-            // 事件日志
-            Text("事件日志")
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            ScrollView(.vertical) {
-                ScrollViewReader { proxy in
-                    VStack(alignment: .leading, spacing: 1) {
-                        ForEach(Array(logLines.enumerated()), id: \.offset) { _, line in
-                            Text(line)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(logLineColor(line))
-                        }
-                    }
-                    .onChange(of: logLines.count) { _ in
-                        proxy.scrollTo(logLines.count - 1, anchor: .bottom)
-                    }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L10n.t("debug.buffer"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(buffer.isEmpty ? L10n.t("debug.empty") : buffer)
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundColor(buffer.isEmpty ? .secondary : .primary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
                 }
             }
-            .frame(maxHeight: 200)
-            .padding(6)
-            .background(RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.04)))
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.035)))
+
+            HStack(alignment: .top, spacing: 12) {
+                logPanel(
+                    title: L10n.t("debug.abbreviations"),
+                    emptyText: L10n.t("debug.empty"),
+                    lines: snippetList,
+                    maxHeight: .infinity
+                ) { line in
+                    Text(line)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                }
+
+                logPanel(
+                    title: L10n.t("debug.eventLog"),
+                    emptyText: L10n.t("debug.noLog"),
+                    lines: logLines,
+                    maxHeight: .infinity
+                ) { line in
+                    Text(line)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(logLineColor(line))
+                        .lineLimit(1)
+                }
+            }
         }
-        .padding()
-        .frame(width: 480, height: 420)
+        .padding(18)
+        .frame(width: 560, height: 520)
         .onReceive(timer) { _ in
             refresh()
         }
     }
 
-    private func statusBadge(label: String, ok: Bool, okText: String = "运行", failText: String = "停止") -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(ok ? Color.green : Color.red)
-                .frame(width: 8, height: 8)
-            Text("\(label): \(ok ? okText : failText)")
+    private var header: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "waveform.path.ecg.rectangle")
+                .font(.system(size: 28))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.blue)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.t("debug.title"))
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                Text(L10n.t("debug.subtitle"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+        }
+    }
+
+    private func statusCard(title: String, value: String, systemImage: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: systemImage)
+                    .foregroundColor(tint)
+                Spacer()
+                Circle()
+                    .fill(tint)
+                    .frame(width: 8, height: 8)
+            }
+            Text(title)
                 .font(.caption)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.headline)
+                .lineLimit(1)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.045)))
+    }
+
+    private func metric(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(.title3, design: .rounded))
+                .fontWeight(.semibold)
+                .monospacedDigit()
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .frame(minWidth: 82, alignment: .leading)
+    }
+
+    private func logPanel<Content: View>(
+        title: String,
+        emptyText: String,
+        lines: [String],
+        maxHeight: CGFloat,
+        @ViewBuilder row: @escaping (String) -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+
+            ScrollView(.vertical) {
+                ScrollViewReader { proxy in
+                    VStack(alignment: .leading, spacing: 3) {
+                        if lines.isEmpty {
+                            Text(emptyText)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                                row(line)
+                                    .id(index)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onChange(of: lines.count) { _ in
+                        guard !lines.isEmpty else { return }
+                        proxy.scrollTo(lines.count - 1, anchor: .bottom)
+                    }
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, maxHeight: maxHeight)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.045)))
         }
     }
 
