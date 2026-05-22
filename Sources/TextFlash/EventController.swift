@@ -412,20 +412,25 @@ public final class EventController {
                 self.postKeyEvent(keyCode: 51, keyDown: false)
             }
 
-            // Step 4: 写入展开文本。优先走 Accessibility，不触碰系统剪贴板。
-            let insertionText = processedText + (triggerChar.map(String.init) ?? "")
-            if !self.replaceFocusedSelection(with: insertionText) {
-                self.postUnicodeString(insertionText)
-            }
-
-            // Step 6: 移动光标到 {cursor} 位置
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(20)) { [weak self] in
+            // Telegram 等应用会延迟处理退格事件；等待缩写删除落地后再写入，避免尾部被后续退格误删。
+            let deleteSettleDelay = max(20, backspaceCount * 20)
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(deleteSettleDelay)) { [weak self] in
                 guard let self = self else { return }
-                if cursorOffset >= 0 {
-                    let triggerLen = triggerChar != nil ? 1 : 0
-                    self.moveCursorLeft(by: processedText.count + triggerLen - cursorOffset)
+                // Step 4: 写入展开文本。优先走 Accessibility，不触碰系统剪贴板。
+                let insertionText = processedText + (triggerChar.map(String.init) ?? "")
+                if !self.replaceFocusedSelection(with: insertionText) {
+                    self.postUnicodeString(insertionText)
                 }
-                self.isInjecting = false
+
+                // Step 6: 移动光标到 {cursor} 位置
+                DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(20)) { [weak self] in
+                    guard let self = self else { return }
+                    if cursorOffset >= 0 {
+                        let triggerLen = triggerChar != nil ? 1 : 0
+                        self.moveCursorLeft(by: processedText.count + triggerLen - cursorOffset)
+                    }
+                    self.isInjecting = false
+                }
             }
         }
     }
