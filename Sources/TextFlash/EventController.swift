@@ -357,7 +357,7 @@ public final class EventController {
             guard let match = matcher.match(in: inputBuffer) else {
                 return false
             }
-            guard !isFocusedElementSecureOrUnknown() else {
+            guard !isFocusedElementSecure() else {
                 return false
             }
             inject(abbreviation: match.abbreviation, expansion: match.expansion, triggerChar: char)
@@ -372,7 +372,7 @@ public final class EventController {
         }
 
         // 即时触发时原始按键需要先进入目标应用，然后再回删完整缩写。
-        if !isFocusedElementSecureOrUnknown() {
+        if !isFocusedElementSecure() {
             inject(abbreviation: match.abbreviation, expansion: match.expansion, triggerChar: nil)
         }
         inputBuffer = ""
@@ -479,15 +479,16 @@ public final class EventController {
 
     // MARK: - Secure Field Detection
 
-    /// 检查当前焦点元素是否为安全文本域（密码框）。无法确认时保守阻止展开。
-    private func isFocusedElementSecureOrUnknown() -> Bool {
+    /// 检查当前焦点元素是否为安全文本域（密码框）。
+    /// 某些 Electron/WebView 应用无法稳定暴露 focused UI element；这种情况只在能明确识别安全输入框时才阻止展开。
+    private func isFocusedElementSecure() -> Bool {
         let systemWide = AXUIElementCreateSystemWide()
         var focusedApp: CFTypeRef?
         guard AXUIElementCopyAttributeValue(
             systemWide, kAXFocusedApplicationAttribute as CFString, &focusedApp
-        ) == .success else { return true }
-        guard let app = focusedApp else { return true }
-        guard CFGetTypeID(app) == AXUIElementGetTypeID() else { return true }
+        ) == .success else { return false }
+        guard let app = focusedApp else { return false }
+        guard CFGetTypeID(app) == AXUIElementGetTypeID() else { return false }
         let axApp = app as! AXUIElement
 
         var focusedElement: CFTypeRef?
@@ -495,9 +496,9 @@ public final class EventController {
             axApp,
             kAXFocusedUIElementAttribute as CFString,
             &focusedElement
-        ) == .success else { return true }
-        guard let element = focusedElement else { return true }
-        guard CFGetTypeID(element) == AXUIElementGetTypeID() else { return true }
+        ) == .success else { return false }
+        guard let element = focusedElement else { return false }
+        guard CFGetTypeID(element) == AXUIElementGetTypeID() else { return false }
         let axElement = element as! AXUIElement
 
         // 方法1：检查 AXIsSecureTextField 属性

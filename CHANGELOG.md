@@ -9,6 +9,7 @@
 - Re-enable the keyboard event tap automatically when macOS disables it.
 - Keep the running state in sync when keyboard event tap creation fails.
 - Harden Accessibility element handling to fail safely instead of force-casting unexpected values.
+- Allow expansion in apps that do not expose a focused Accessibility element unless a secure field is explicitly detected.
 - Added JSON import/export, import validation, overwrite confirmation, and automatic pre-import backups.
 - Accept wrapped backups, raw group arrays, and single-group JSON when importing snippets.
 - Added a manager toolbar action to open the automatic backup directory.
