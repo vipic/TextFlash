@@ -24,6 +24,8 @@ Deploy a development app bundle to `~/Applications/TextFlash Dev.app`:
 
 Text expansion requires macOS Accessibility permission. If the app cannot expand text, open the menu bar item and use the accessibility permission action.
 
+CI runs shell script syntax checks, `swift test`, and `swift build -c release` on macOS. See `CHANGELOG.md` for notable changes.
+
 ## Snippets
 
 Snippets are stored in SQLite under Application Support. The manager window supports JSON import and export. Import validates the backup before replacing existing data and writes an automatic backup first.
