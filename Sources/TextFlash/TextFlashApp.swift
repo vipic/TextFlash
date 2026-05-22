@@ -249,6 +249,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = EventController.shared
         pauseMenuItem?.title = controller.isPaused ? "恢复展开" : "暂停展开"
         permissionMenuItem?.title = controller.checkPermission() ? "辅助功能权限：已启用" : "辅助功能权限：需要启用"
+        updateStatusIcon()
 
         if let app = focusedApp ?? controller.focusedApplicationInfo() {
             let excluded = controller.excludedBundleIDs.contains(app.bundleID)
@@ -256,6 +257,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             exclusionMenuItem?.title = "排除当前应用"
         }
+    }
+
+    private func updateStatusIcon() {
+        guard let button = statusItem?.button else { return }
+        let paused = EventController.shared.isPaused
+        button.image = NSImage(
+            systemSymbolName: paused ? "pause.circle" : "text.word.spacing",
+            accessibilityDescription: paused ? "TextFlash 已暂停" : "TextFlash"
+        )
+        button.contentTintColor = paused ? .secondaryLabelColor : nil
     }
 }
 
