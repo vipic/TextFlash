@@ -15,6 +15,7 @@
 - Added transaction-backed database updates and surfaced write failures in the manager UI.
 - Avoid crashing when the database directory or SQLite connection cannot be initialized.
 - Added exclusion-list management, including add current app, remove, and clear actions.
+- Refresh exclusion UI from exclusion-change notifications and show an error when no target app is available.
 - Use the last non-TextFlash foreground app as the exclusion target so TextFlash windows do not exclude themselves.
 - Extracted snippet matching into a testable matcher with unit coverage.
 - Hardened release packaging with tests, signing/notarization checks, cleanup, and DMG signing.

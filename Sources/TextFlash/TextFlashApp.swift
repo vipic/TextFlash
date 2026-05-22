@@ -29,6 +29,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .textFlashSnippetsDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(exclusionsDidChange),
+            name: .textFlashExclusionsDidChange,
+            object: nil
+        )
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -245,6 +251,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         loadSnippetsIntoController()
     }
 
+    @objc private func exclusionsDidChange(_ notification: Notification) {
+        updateMenuState()
+    }
+
     private func updateMenuState(focusedApp: FocusedApplicationInfo? = nil) {
         let controller = EventController.shared
         pauseMenuItem?.title = controller.isPaused ? "恢复展开" : "暂停展开"
@@ -278,6 +288,7 @@ extension AppDelegate: NSMenuDelegate {
 
 struct ExclusionsView: View {
     @State private var excludedBundleIDs = Array(EventController.shared.excludedBundleIDs).sorted()
+    @State private var exclusionErrorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -337,26 +348,41 @@ struct ExclusionsView: View {
             }
         }
         .frame(minWidth: 420, minHeight: 320)
+        .onReceive(NotificationCenter.default.publisher(for: .textFlashExclusionsDidChange)) { _ in
+            refreshExclusions()
+        }
+        .alert("无法添加应用", isPresented: Binding(
+            get: { exclusionErrorMessage != nil },
+            set: { if !$0 { exclusionErrorMessage = nil } }
+        )) {
+            Button("确定", role: .cancel) { exclusionErrorMessage = nil }
+        } message: {
+            Text(exclusionErrorMessage ?? "")
+        }
     }
 
     private func remove(_ bundleID: String) {
         var exclusions = EventController.shared.excludedBundleIDs
         exclusions.remove(bundleID)
         EventController.shared.excludedBundleIDs = exclusions
-        excludedBundleIDs = Array(exclusions).sorted()
     }
 
     private func addFocusedApplication() {
-        guard let app = EventController.shared.exclusionTargetApplication() else { return }
+        guard let app = EventController.shared.exclusionTargetApplication() else {
+            exclusionErrorMessage = "请切回目标应用后再添加，或先从菜单栏使用“排除当前应用”。"
+            return
+        }
         var exclusions = EventController.shared.excludedBundleIDs
         exclusions.insert(app.bundleID)
         EventController.shared.excludedBundleIDs = exclusions
-        excludedBundleIDs = Array(exclusions).sorted()
     }
 
     private func clearAll() {
         EventController.shared.excludedBundleIDs = []
-        excludedBundleIDs = []
+    }
+
+    private func refreshExclusions() {
+        excludedBundleIDs = Array(EventController.shared.excludedBundleIDs).sorted()
     }
 }
 

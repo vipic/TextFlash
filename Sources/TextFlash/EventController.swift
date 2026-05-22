@@ -1,6 +1,10 @@
 import Cocoa
 import CoreGraphics
 
+extension Notification.Name {
+    static let textFlashExclusionsDidChange = Notification.Name("TextFlashExclusionsDidChange")
+}
+
 // MARK: - EventController
 
 /// 全系统文本展开控制器——单例模式，通过 CGEvent tap 全局监听键盘事件，
@@ -71,6 +75,7 @@ public final class EventController {
         }
         set {
             UserDefaults.standard.set(Array(newValue).sorted(), forKey: excludedBundleIDsKey)
+            NotificationCenter.default.post(name: .textFlashExclusionsDidChange, object: self)
         }
     }
 
