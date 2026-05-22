@@ -274,6 +274,22 @@ struct ExclusionsView: View {
                 Text("排除列表")
                     .font(.headline)
                 Spacer()
+                Button {
+                    addFocusedApplication()
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .buttonStyle(.plain)
+                .help("添加当前应用")
+
+                Button {
+                    clearAll()
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.plain)
+                .disabled(excludedBundleIDs.isEmpty)
+                .help("清空排除列表")
             }
             .padding()
 
@@ -317,6 +333,19 @@ struct ExclusionsView: View {
         exclusions.remove(bundleID)
         EventController.shared.excludedBundleIDs = exclusions
         excludedBundleIDs = Array(exclusions).sorted()
+    }
+
+    private func addFocusedApplication() {
+        guard let app = EventController.shared.focusedApplicationInfo() else { return }
+        var exclusions = EventController.shared.excludedBundleIDs
+        exclusions.insert(app.bundleID)
+        EventController.shared.excludedBundleIDs = exclusions
+        excludedBundleIDs = Array(exclusions).sorted()
+    }
+
+    private func clearAll() {
+        EventController.shared.excludedBundleIDs = []
+        excludedBundleIDs = []
     }
 }
 
