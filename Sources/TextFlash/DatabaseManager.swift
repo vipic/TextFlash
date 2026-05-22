@@ -12,10 +12,12 @@ final class DatabaseManager {
     private let lock = NSRecursiveLock()
     private var db: OpaquePointer?
     private let dbPath: String
+    private(set) var initializationError: String?
 
     /// 数据库 schema 版本（PRAGMA user_version）
     private var schemaVersion: Int32 {
         get {
+            guard db != nil else { return 0 }
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, "PRAGMA user_version;", -1, &stmt, nil) == SQLITE_OK else { return 0 }
             defer { sqlite3_finalize(stmt) }
@@ -29,13 +31,24 @@ final class DatabaseManager {
         guard let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
         ).first else {
-            fatalError("无法获取 Application Support 目录")
+            dbPath = ""
+            initializationError = "无法获取 Application Support 目录"
+            print("[DatabaseManager] \(initializationError ?? "初始化失败")")
+            return
         }
+
         let dir = appSupport.appendingPathComponent("TextFlash")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        } catch {
+            dbPath = dir.appendingPathComponent("textflash.db").path
+            initializationError = "无法创建数据库目录: \(error.localizedDescription)"
+            print("[DatabaseManager] \(initializationError ?? "初始化失败")")
+            return
+        }
 
         dbPath = dir.appendingPathComponent("textflash.db").path
-        openDatabase()
+        guard openDatabase() else { return }
         createTables()
         runMigrations()
         migrateFromJSONIfNeeded()
@@ -47,16 +60,20 @@ final class DatabaseManager {
 
     // MARK: - 初始化
 
-    private func openDatabase() {
+    @discardableResult
+    private func openDatabase() -> Bool {
         if sqlite3_open(dbPath, &db) != SQLITE_OK {
-            print("[DatabaseManager] 无法打开数据库: \(dbPath)")
+            initializationError = "无法打开数据库: \(lastError())"
+            print("[DatabaseManager] \(initializationError ?? "初始化失败") (\(dbPath))")
+            if let db = db { sqlite3_close(db) }
             db = nil
-            return
+            return false
         }
         execute("PRAGMA journal_mode=WAL;")
         execute("PRAGMA synchronous=FULL;")
         execute("PRAGMA foreign_keys=ON;")
         print("[DatabaseManager] 数据库已打开: \(dbPath)")
+        return true
     }
 
     private func createTables() {
@@ -100,6 +117,10 @@ final class DatabaseManager {
     @discardableResult
     private func execute(_ sql: String) -> Bool {
         lock.lock(); defer { lock.unlock() }
+        guard db != nil else {
+            print("[DatabaseManager] SQL 执行失败: database is nil")
+            return false
+        }
         var errMsg: UnsafeMutablePointer<CChar>?
         let rc = sqlite3_exec(db, sql, nil, nil, &errMsg)
         if rc != SQLITE_OK, let msg = errMsg {
@@ -126,6 +147,10 @@ final class DatabaseManager {
     @discardableResult
     private func executeParam(_ sql: String, bind: (OpaquePointer) -> Void) -> Bool {
         lock.lock(); defer { lock.unlock() }
+        guard db != nil else {
+            print("[DatabaseManager] prepare 失败: database is nil — \(sql.prefix(60))")
+            return false
+        }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK, let s = stmt else {
             print("[DatabaseManager] prepare 失败: \(lastError()) — \(sql.prefix(60))")
@@ -142,6 +167,10 @@ final class DatabaseManager {
     /// 查询（带闭包绑定参数 + 行映射）
     private func queryParam<T>(_ sql: String, bind: (OpaquePointer) -> Void, row: (OpaquePointer) -> T) -> [T] {
         lock.lock(); defer { lock.unlock() }
+        guard db != nil else {
+            print("[DatabaseManager] query prepare 失败: database is nil")
+            return []
+        }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK, let s = stmt else {
             print("[DatabaseManager] query prepare 失败: \(lastError())")

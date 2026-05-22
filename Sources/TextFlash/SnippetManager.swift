@@ -95,6 +95,11 @@ final class SnippetManager: ObservableObject {
     private let db = DatabaseManager.shared
 
     init() {
+        if let initializationError = db.initializationError {
+            operationErrorMessage = "数据库初始化失败：\(initializationError)"
+            return
+        }
+
         reload()
         if groups.isEmpty {
             createDefaultGroup()
