@@ -201,9 +201,9 @@ public final class EventController {
                 alert.addButton(withTitle: "打开系统设置")
                 alert.addButton(withTitle: "稍后")
                 if alert.runModal() == .alertFirstButtonReturn {
-                    NSWorkspace.shared.open(
-                        URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                    )
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                        NSWorkspace.shared.open(url)
+                    }
                 }
             }
         }
@@ -240,8 +240,13 @@ public final class EventController {
         eventTap = tap
 
         // 附加到当前 RunLoop（common modes 保证右键菜单、拖拽时不丢事件）
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
+        guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
+            CFMachPortInvalidate(tap)
+            eventTap = nil
+            return false
+        }
+        runLoopSource = source
+        CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
 
         // 启用 tap
         CGEvent.tapEnable(tap: tap, enable: true)
@@ -477,15 +482,17 @@ public final class EventController {
             systemWide, kAXFocusedApplicationAttribute as CFString, &focusedApp
         ) == .success else { return true }
         guard let app = focusedApp else { return true }
+        guard CFGetTypeID(app) == AXUIElementGetTypeID() else { return true }
+        let axApp = app as! AXUIElement
 
         var focusedElement: CFTypeRef?
         guard AXUIElementCopyAttributeValue(
-            (app as! AXUIElement),
+            axApp,
             kAXFocusedUIElementAttribute as CFString,
             &focusedElement
         ) == .success else { return true }
         guard let element = focusedElement else { return true }
-
+        guard CFGetTypeID(element) == AXUIElementGetTypeID() else { return true }
         let axElement = element as! AXUIElement
 
         // 方法1：检查 AXIsSecureTextField 属性
@@ -536,9 +543,11 @@ public final class EventController {
             systemWide, kAXFocusedApplicationAttribute as CFString, &focusedApp
         ) == .success else { return nil }
         guard let app = focusedApp else { return nil }
+        guard CFGetTypeID(app) == AXUIElementGetTypeID() else { return nil }
+        let axApp = app as! AXUIElement
 
         var pidValue: pid_t = 0
-        guard AXUIElementGetPid((app as! AXUIElement), &pidValue) == .success,
+        guard AXUIElementGetPid(axApp, &pidValue) == .success,
               let runningApp = NSRunningApplication(processIdentifier: pidValue),
               let bundleID = runningApp.bundleIdentifier
         else { return nil }
