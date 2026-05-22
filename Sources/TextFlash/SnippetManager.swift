@@ -265,9 +265,7 @@ final class SnippetManager: ObservableObject {
 
     func parseImportJSONData(_ data: Data) throws -> [SnippetGroup] {
         let backup = try JSONDecoder().decode(SnippetBackup.self, from: data)
-        let normalizedGroups = backup.groups.isEmpty ? [SnippetGroup(name: "通用")] : backup.groups
-        try validateImportGroups(normalizedGroups)
-        return normalizedGroups
+        return try SnippetBackupValidator.normalizedGroups(from: backup)
     }
 
     func replaceAllGroups(_ normalizedGroups: [SnippetGroup]) throws {
@@ -315,32 +313,6 @@ final class SnippetManager: ObservableObject {
         operationErrorMessage = OperationError.databaseWriteFailed.localizedDescription
     }
 
-    private func validateImportGroups(_ groups: [SnippetGroup]) throws {
-        var seenAbbreviations: Set<String> = []
-
-        for group in groups {
-            if group.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                throw SnippetImportExportError.invalidBackup("存在空分组名称")
-            }
-
-            for snippet in group.snippets {
-                let abbreviation = snippet.abbreviation.trimmingCharacters(in: .whitespacesAndNewlines)
-                let expansion = snippet.expandedText.trimmingLeadingWhitespaceAndNewlines()
-
-                if abbreviation.isEmpty {
-                    throw SnippetImportExportError.invalidBackup("存在空缩写触发词")
-                }
-                if expansion.isEmpty {
-                    throw SnippetImportExportError.invalidBackup("缩写 \(snippet.abbreviation) 的展开文本为空")
-                }
-                if seenAbbreviations.contains(abbreviation) {
-                    throw SnippetImportExportError.invalidBackup("缩写 \(abbreviation) 重复")
-                }
-                seenAbbreviations.insert(abbreviation)
-            }
-        }
-    }
-
     private func writeAutomaticBackup() throws {
         guard !groups.isEmpty else { return }
         guard let appSupport = FileManager.default.urls(
@@ -381,8 +353,42 @@ final class SnippetManager: ObservableObject {
     }
 }
 
-private struct SnippetBackup: Codable {
+struct SnippetBackup: Codable {
     let groups: [SnippetGroup]
+}
+
+enum SnippetBackupValidator {
+    static func normalizedGroups(from backup: SnippetBackup) throws -> [SnippetGroup] {
+        let groups = backup.groups.isEmpty ? [SnippetGroup(name: "通用")] : backup.groups
+        try validate(groups)
+        return groups
+    }
+
+    static func validate(_ groups: [SnippetGroup]) throws {
+        var seenAbbreviations: Set<String> = []
+
+        for group in groups {
+            if group.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                throw SnippetImportExportError.invalidBackup("存在空分组名称")
+            }
+
+            for snippet in group.snippets {
+                let abbreviation = snippet.abbreviation.trimmingCharacters(in: .whitespacesAndNewlines)
+                let expansion = snippet.expandedText.trimmingLeadingWhitespaceAndNewlines()
+
+                if abbreviation.isEmpty {
+                    throw SnippetImportExportError.invalidBackup("存在空缩写触发词")
+                }
+                if expansion.isEmpty {
+                    throw SnippetImportExportError.invalidBackup("缩写 \(snippet.abbreviation) 的展开文本为空")
+                }
+                if seenAbbreviations.contains(abbreviation) {
+                    throw SnippetImportExportError.invalidBackup("缩写 \(abbreviation) 重复")
+                }
+                seenAbbreviations.insert(abbreviation)
+            }
+        }
+    }
 }
 
 enum SnippetImportExportError: LocalizedError {
