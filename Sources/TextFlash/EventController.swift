@@ -1,74 +1,6 @@
 import Cocoa
 import CoreGraphics
 
-// MARK: - Trie-based Snippet Matcher
-
-/// 前缀树节点——用于快速缩写匹配
-private final class TrieNode {
-    var children: [Character: TrieNode] = [:]
-    /// 叶节点存储展开文本，非叶节点为 nil
-    var expansion: String?
-}
-
-/// 前缀树（Trie）——O(k) 匹配，k=缩写长度
-private final class Trie {
-    let root = TrieNode()
-
-    /// 插入一条缩写→展开映射
-    func insert(abbreviation: String, expansion: String) {
-        var node = root
-        for ch in abbreviation {
-            if let next = node.children[ch] {
-                node = next
-            } else {
-                let next = TrieNode()
-                node.children[ch] = next
-                node = next
-            }
-        }
-        node.expansion = expansion
-    }
-
-    /// 查找前缀：返回 (是否可能匹配, 展开文本)
-    /// - 如果前缀是完整缩写且匹配，返回 (true, expansion)
-    /// - 如果前缀是某缩写的开头，返回 (true, nil) 表示可能匹配
-    /// - 如果前缀不匹配任何缩写，返回 (false, nil)
-    func search(_ prefix: String) -> (matched: Bool, expansion: String?) {
-        var node = root
-        for ch in prefix {
-            guard let next = node.children[ch] else {
-                return (false, nil)
-            }
-            node = next
-        }
-        return (true, node.expansion)
-    }
-
-    /// 移除一条缩写（如未使用则惰性清理节点）
-    func remove(abbreviation: String) {
-        var node = root
-        var path: [(TrieNode, Character)] = []
-        for ch in abbreviation {
-            guard let next = node.children[ch] else { return }
-            path.append((node, ch))
-            node = next
-        }
-        node.expansion = nil
-        // 从后向前清理无子节点的路径
-        for (parent, ch) in path.reversed() {
-            guard let child = parent.children[ch], child.children.isEmpty, child.expansion == nil else {
-                break
-            }
-            parent.children.removeValue(forKey: ch)
-        }
-    }
-
-    /// 清空所有条目
-    func clear() {
-        root.children.removeAll()
-    }
-}
-
 // MARK: - EventController
 
 /// 全系统文本展开控制器——单例模式，通过 CGEvent tap 全局监听键盘事件，
@@ -114,7 +46,7 @@ public final class EventController {
     /// 是否正在注入（调试用）
     var isInjecting = false
     /// 前缀树
-    private let trie = Trie()
+    private let matcher = SnippetMatcher()
     /// 缩写→展开文本字典（用于快速查询完整展开）
     private var snippets: [String: String] = [:]
     /// 触发字符集——当这些字符出现时触发匹配检查
@@ -211,19 +143,19 @@ public final class EventController {
     public func addSnippet(_ abbreviation: String, expansion: String) {
         guard !abbreviation.isEmpty, !expansion.isEmpty else { return }
         snippets[abbreviation] = expansion
-        trie.insert(abbreviation: abbreviation, expansion: expansion)
+        matcher.insert(abbreviation: abbreviation, expansion: expansion)
     }
 
     /// 移除一条文本缩写
     public func removeSnippet(_ abbreviation: String) {
         snippets.removeValue(forKey: abbreviation)
-        trie.remove(abbreviation: abbreviation)
+        matcher.remove(abbreviation: abbreviation)
     }
 
     /// 清除所有缩写
     public func removeAllSnippets() {
         snippets.removeAll()
-        trie.clear()
+        matcher.clear()
     }
 
     /// 已加载的缩写列表（调试用）
@@ -388,7 +320,7 @@ public final class EventController {
         // 触发字符检查
         if triggerCharacters.contains(char) {
             defer { inputBuffer = "" }
-            guard let match = matchingExpansion(in: inputBuffer) else {
+            guard let match = matcher.match(in: inputBuffer) else {
                 return false
             }
             guard !isFocusedElementSecureOrUnknown() else {
@@ -400,8 +332,8 @@ public final class EventController {
 
         // 非触发字符 → 一律加入 buffer，Trie 检查即时匹配
         inputBuffer.append(char)
-        guard let match = matchingExpansion(in: inputBuffer) else {
-            trimBufferToPossibleSuffix()
+        guard let match = matcher.match(in: inputBuffer) else {
+            inputBuffer = matcher.trimToPossibleSuffix(inputBuffer)
             return false
         }
 
@@ -414,33 +346,6 @@ public final class EventController {
     }
 
     // MARK: - Trigger Handling
-
-    private func matchingExpansion(in buffer: String) -> (abbreviation: String, expansion: String)? {
-        guard !buffer.isEmpty else { return nil }
-
-        for i in buffer.indices {
-            let suffix = String(buffer[i...])
-            let (matched, expansion) = trie.search(suffix)
-            if let text = expansion {
-                return (suffix, text)
-            }
-            if matched {
-                return nil
-            }
-        }
-        return nil
-    }
-
-    private func trimBufferToPossibleSuffix() {
-        for i in inputBuffer.indices {
-            let suffix = String(inputBuffer[i...])
-            if trie.search(suffix).matched {
-                inputBuffer = suffix
-                return
-            }
-        }
-        inputBuffer = ""
-    }
 
     // MARK: - Text Injection
 
