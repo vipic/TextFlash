@@ -251,7 +251,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         permissionMenuItem?.title = controller.checkPermission() ? "辅助功能权限：已启用" : "辅助功能权限：需要启用"
         updateStatusIcon()
 
-        if let app = focusedApp ?? controller.focusedApplicationInfo() {
+        if let app = focusedApp ?? controller.exclusionTargetApplication() {
             let excluded = controller.excludedBundleIDs.contains(app.bundleID)
             exclusionMenuItem?.title = excluded ? "取消排除 \(app.localizedName)" : "排除 \(app.localizedName)"
         } else {
@@ -347,7 +347,7 @@ struct ExclusionsView: View {
     }
 
     private func addFocusedApplication() {
-        guard let app = EventController.shared.focusedApplicationInfo() else { return }
+        guard let app = EventController.shared.exclusionTargetApplication() else { return }
         var exclusions = EventController.shared.excludedBundleIDs
         exclusions.insert(app.bundleID)
         EventController.shared.excludedBundleIDs = exclusions

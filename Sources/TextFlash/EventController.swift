@@ -47,6 +47,7 @@ public final class EventController {
     var isInjecting = false
     /// Event tap 自动恢复次数（调试用）
     var tapRecoveryCount = 0
+    private var lastNonTextFlashApplication: FocusedApplicationInfo?
     /// 前缀树
     private let matcher = SnippetMatcher()
     /// 缩写→展开文本字典（用于快速查询完整展开）
@@ -130,7 +131,7 @@ public final class EventController {
     }
 
     public func toggleExclusionForFocusedApplication() -> FocusedApplicationInfo? {
-        guard let app = focusedApplicationInfo() else { return nil }
+        guard let app = exclusionTargetApplication() else { return nil }
         var exclusions = excludedBundleIDs
         if exclusions.contains(app.bundleID) {
             exclusions.remove(app.bundleID)
@@ -287,6 +288,7 @@ public final class EventController {
     /// must be suppressed because TextFlash will re-inject the trigger itself.
     private func processKeyboardEvent(_ event: CGEvent) -> Bool {
         guard !isInjecting else { return false }
+        refreshLastNonTextFlashApplication()
         guard !isFocusedApplicationExcluded() else {
             inputBuffer = ""
             return false
@@ -509,6 +511,19 @@ public final class EventController {
         return excludedBundleIDs.contains(app.bundleID)
     }
 
+    public func exclusionTargetApplication() -> FocusedApplicationInfo? {
+        if let app = focusedApplicationInfo(), !app.isTextFlash {
+            lastNonTextFlashApplication = app
+            return app
+        }
+        return lastNonTextFlashApplication
+    }
+
+    private func refreshLastNonTextFlashApplication() {
+        guard let app = focusedApplicationInfo(), !app.isTextFlash else { return }
+        lastNonTextFlashApplication = app
+    }
+
     public func focusedApplicationInfo() -> FocusedApplicationInfo? {
         let systemWide = AXUIElementCreateSystemWide()
         var focusedApp: CFTypeRef?
@@ -533,4 +548,8 @@ public final class EventController {
 public struct FocusedApplicationInfo {
     public let bundleID: String
     public let localizedName: String
+
+    var isTextFlash: Bool {
+        bundleID.hasPrefix("com.nekutai.textflash")
+    }
 }
