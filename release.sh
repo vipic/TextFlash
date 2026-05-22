@@ -16,6 +16,7 @@ VERSION="${VERSION#v}"
 BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 IDENTITY="${CODESIGN_IDENTITY:-}"
+NOTARIZE="${NOTARIZE:-false}"
 
 # 解析 --publish 标志
 PUBLISH=false
@@ -103,9 +104,19 @@ else
 fi
 
 if $CERT_OK; then
-    codesign --force --deep --sign "$IDENTITY" "$STAGING/$APP_NAME.app" 2>&1
+    codesign --force --deep --options runtime --timestamp --sign "$IDENTITY" "$STAGING/$APP_NAME.app" 2>&1
 else
     codesign --force --deep --sign - "$STAGING/$APP_NAME.app" 2>&1
+fi
+
+if $PUBLISH && ! $CERT_OK; then
+    echo "❌ --publish 需要有效的 Developer ID 签名证书，不能发布 ad-hoc 签名产物"
+    exit 1
+fi
+
+if $PUBLISH && [ "$NOTARIZE" != "true" ]; then
+    echo "❌ --publish 需要完成 notarization；请设置 NOTARIZE=true 并配置 APPLE_ID、APPLE_TEAM_ID、APP_SPECIFIC_PASSWORD"
+    exit 1
 fi
 
 # ── 5. DMG 打包 ──
@@ -126,6 +137,26 @@ hdiutil create -volname "$APP_NAME" \
     -srcfolder "$DMG_SRC" \
     -ov -format UDZO \
     "$DMG_PATH" 2>&1 | tail -1
+
+if $CERT_OK; then
+    codesign --force --timestamp --sign "$IDENTITY" "$DMG_PATH" 2>&1
+fi
+
+if [ "$NOTARIZE" = "true" ]; then
+    if [ -z "${APPLE_ID:-}" ] || [ -z "${APPLE_TEAM_ID:-}" ] || [ -z "${APP_SPECIFIC_PASSWORD:-}" ]; then
+        echo "❌ notarization 需要 APPLE_ID、APPLE_TEAM_ID、APP_SPECIFIC_PASSWORD"
+        exit 1
+    fi
+
+    echo ""
+    echo "━━━ Notarization ━━━"
+    xcrun notarytool submit "$DMG_PATH" \
+        --apple-id "$APPLE_ID" \
+        --team-id "$APPLE_TEAM_ID" \
+        --password "$APP_SPECIFIC_PASSWORD" \
+        --wait
+    xcrun stapler staple "$DMG_PATH"
+fi
 
 rm -rf "$STAGING"
 

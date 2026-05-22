@@ -3,6 +3,7 @@ import AppKit
 
 // MARK: - AppDelegate
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem?
@@ -86,7 +87,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: window,
             queue: .main
         ) { [weak self] _ in
-            self?.snippetWindow = nil
+            Task { @MainActor in
+                self?.snippetWindow = nil
+            }
         }
 
         window.makeKeyAndOrderFront(nil)
@@ -127,7 +130,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: window,
             queue: .main
         ) { [weak self] _ in
-            self?.debugWindow = nil
+            Task { @MainActor in
+                self?.debugWindow = nil
+            }
         }
 
         window.makeKeyAndOrderFront(nil)
