@@ -66,3 +66,5 @@ APPLE_TEAM_ID="TEAMID" \
 APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx" \
 ./release.sh 0.1.0 --publish
 ```
+
+`--publish` requires a clean Git working tree. The script pushes the current `HEAD` and the release tag.

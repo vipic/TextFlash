@@ -1,6 +1,6 @@
 #!/bin/bash
 # TextFlash Release — 生产发布
-# 流程：测试 → release 编译 → 去除符号 → DMG 打包 → 签名
+# 流程：测试 → release 编译 → 组装 .app → 去除符号 → 签名 → DMG 打包
 # 用法: ./release.sh [version] [--publish]
 #   ./release.sh 0.1.0              # 仅构建 DMG
 #   ./release.sh 0.1.0 --publish    # 构建 + 推 tag + 创建 GitHub Release
@@ -35,6 +35,11 @@ echo ""
 
 cd "$PROJECT_DIR"
 
+if $PUBLISH && [ -n "$(git status --porcelain)" ]; then
+    echo "❌ --publish 需要干净的 Git 工作区"
+    exit 1
+fi
+
 # ── 1. 测试 ──
 echo "━━━ 1/6 测试 ━━━"
 if [ "$RUN_TESTS" = "true" ]; then
@@ -51,28 +56,29 @@ swift build -c release
 BIN="$BUILD_DIR/$APP_NAME"
 test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }
 
-# ── 3. 去除符号 ──
+# ── 3. 组装 .app ──
 echo ""
-echo "━━━ 3/6 去除调试符号 ━━━"
-BIN_SIZE_BEFORE=$(stat -f%z "$BIN")
-strip -S "$BIN" 2>/dev/null || true
-BIN_SIZE_AFTER=$(stat -f%z "$BIN")
-echo "   二进制: $(numfmt --to=iec $BIN_SIZE_BEFORE 2>/dev/null || echo "${BIN_SIZE_BEFORE}") → $(numfmt --to=iec $BIN_SIZE_AFTER 2>/dev/null || echo "${BIN_SIZE_AFTER}")"
-
-# ── 4. 组装 .app ──
-echo ""
-echo "━━━ 4/6 组装 .app bundle ━━━"
+echo "━━━ 3/6 组装 .app bundle ━━━"
 rm -rf "$STAGING"
 mkdir -p "$STAGING/$APP_NAME.app/Contents/MacOS"
 mkdir -p "$STAGING/$APP_NAME.app/Contents/Resources"
 
-cp "$BIN" "$STAGING/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+STAGED_BIN="$STAGING/$APP_NAME.app/Contents/MacOS/$APP_NAME"
+cp "$BIN" "$STAGED_BIN"
 
 # 拷贝应用图标
 if [ -f "$PROJECT_DIR/AppIcon.icns" ]; then
     cp "$PROJECT_DIR/AppIcon.icns" "$STAGING/$APP_NAME.app/Contents/Resources/AppIcon.icns"
     echo "   📱 AppIcon.icns → .app bundle"
 fi
+
+# ── 4. 去除符号 ──
+echo ""
+echo "━━━ 4/6 去除调试符号 ━━━"
+BIN_SIZE_BEFORE=$(stat -f%z "$STAGED_BIN")
+strip -S "$STAGED_BIN" 2>/dev/null || true
+BIN_SIZE_AFTER=$(stat -f%z "$STAGED_BIN")
+echo "   二进制: $(numfmt --to=iec $BIN_SIZE_BEFORE 2>/dev/null || echo "${BIN_SIZE_BEFORE}") → $(numfmt --to=iec $BIN_SIZE_AFTER 2>/dev/null || echo "${BIN_SIZE_AFTER}")"
 
 cat > "$STAGING/$APP_NAME.app/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -192,7 +198,7 @@ if $PUBLISH; then
         git tag "$TAG"
     fi
 
-    git push origin main "$TAG" 2>&1 | tail -2
+    git push origin HEAD "$TAG"
 
     if gh release view "$TAG" &>/dev/null 2>&1; then
         echo "   ⚠️  Release $TAG 已存在，仅上传资产..."

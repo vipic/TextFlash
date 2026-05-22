@@ -10,5 +10,6 @@
 - Added exclusion-list management, including add current app, remove, and clear actions.
 - Extracted snippet matching into a testable matcher with unit coverage.
 - Hardened release packaging with tests, signing/notarization checks, cleanup, and DMG signing.
+- Prevented release packaging from stripping SwiftPM build artifacts and added clean-tree checks for publishing.
 - Added CI for shell syntax checks, Swift tests, and release builds.
 - Added project README with development, backup, exclusion, and release workflows.
