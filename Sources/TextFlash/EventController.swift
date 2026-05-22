@@ -388,8 +388,8 @@ public final class EventController {
     /// 2. discardMarkedText（清除输入法缓冲区）
     /// 3. 延时 5ms（等待 discard 生效）
     /// 4. 发送退格删除缩写字符
-    /// 5. 通过 keyboardSetUnicodeString 注入展开文本
-    /// 6. 注入触发字符
+    /// 5. 通过临时剪贴板粘贴展开文本
+    /// 6. 连同触发字符一起粘贴
     /// 7. 移动光标到 {cursor} 位置
     private func inject(abbreviation: String, expansion: String, triggerChar: Character?) {
         isInjecting = true
@@ -412,21 +412,21 @@ public final class EventController {
                 self.postKeyEvent(keyCode: 51, keyDown: false)
             }
 
-            // Step 4: 注入展开文本（Unicode 方式，绕过键盘布局）
-            self.postUnicodeString(processedText)
-
-            // Step 5: 注入触发字符（即时触发时跳过）
-            if let tc = triggerChar {
-                self.postUnicodeString(String(tc))
+            // Step 4: 粘贴展开文本。部分 Electron/WebView 应用会忽略 Unicode CGEvent，Cmd+V 兼容性更好。
+            let insertionText = processedText + (triggerChar.map(String.init) ?? "")
+            if !self.pasteText(insertionText) {
+                self.postUnicodeString(insertionText)
             }
 
             // Step 6: 移动光标到 {cursor} 位置
-            if cursorOffset >= 0 {
-                let triggerLen = triggerChar != nil ? 1 : 0
-                self.moveCursorLeft(by: processedText.count + triggerLen - cursorOffset)
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(20)) { [weak self] in
+                guard let self = self else { return }
+                if cursorOffset >= 0 {
+                    let triggerLen = triggerChar != nil ? 1 : 0
+                    self.moveCursorLeft(by: processedText.count + triggerLen - cursorOffset)
+                }
+                self.isInjecting = false
             }
-
-            self.isInjecting = false
         }
     }
 
@@ -436,6 +436,45 @@ public final class EventController {
         guard let event = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: keyDown) else { return }
         event.setIntegerValueField(.eventSourceUserData, value: Self.injectionTag)
         event.post(tap: .cghidEventTap)
+    }
+
+    private func postModifiedKeyEvent(keyCode: CGKeyCode, flags: CGEventFlags) -> Bool {
+        guard let source = CGEventSource(stateID: .privateState),
+              let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+        else { return false }
+        down.flags = flags
+        up.flags = flags
+        down.setIntegerValueField(.eventSourceUserData, value: Self.injectionTag)
+        up.setIntegerValueField(.eventSourceUserData, value: Self.injectionTag)
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+        return true
+    }
+
+    private func pasteText(_ text: String) -> Bool {
+        guard !text.isEmpty else { return true }
+        let pasteboard = NSPasteboard.general
+        let snapshot = PasteboardSnapshot(pasteboard: pasteboard)
+
+        pasteboard.clearContents()
+        guard pasteboard.setString(text, forType: .string) else {
+            snapshot.restore(to: pasteboard)
+            return false
+        }
+
+        let pasteChangeCount = pasteboard.changeCount
+        guard postModifiedKeyEvent(keyCode: 0x09, flags: .maskCommand) else { // kVK_ANSI_V
+            snapshot.restore(to: pasteboard)
+            return false
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(200)) {
+            if pasteboard.changeCount == pasteChangeCount {
+                snapshot.restore(to: pasteboard)
+            }
+        }
+        return true
     }
 
     /// 通过 Unicode 字符串注入文本——绕过键盘布局映射
@@ -571,5 +610,35 @@ public struct FocusedApplicationInfo {
 
     var isTextFlash: Bool {
         bundleID.hasPrefix("com.nekutai.textflash")
+    }
+}
+
+private struct PasteboardSnapshot {
+    private let items: [[NSPasteboard.PasteboardType: Data]]
+
+    init(pasteboard: NSPasteboard) {
+        items = pasteboard.pasteboardItems?.map { item in
+            var values: [NSPasteboard.PasteboardType: Data] = [:]
+            for type in item.types {
+                if let data = item.data(forType: type) {
+                    values[type] = data
+                }
+            }
+            return values
+        } ?? []
+    }
+
+    func restore(to pasteboard: NSPasteboard) {
+        pasteboard.clearContents()
+        guard !items.isEmpty else { return }
+
+        let pasteboardItems = items.map { values in
+            let item = NSPasteboardItem()
+            for (type, data) in values {
+                item.setData(data, forType: type)
+            }
+            return item
+        }
+        pasteboard.writeObjects(pasteboardItems)
     }
 }

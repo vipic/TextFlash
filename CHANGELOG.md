@@ -10,6 +10,7 @@
 - Keep the running state in sync when keyboard event tap creation fails.
 - Harden Accessibility element handling to fail safely instead of force-casting unexpected values.
 - Allow expansion in apps that do not expose a focused Accessibility element unless a secure field is explicitly detected.
+- Use temporary pasteboard insertion for text expansion so WebView and chat apps accept replacements more reliably.
 - Added JSON import/export, import validation, overwrite confirmation, and automatic pre-import backups.
 - Accept wrapped backups, raw group arrays, and single-group JSON when importing snippets.
 - Added a manager toolbar action to open the automatic backup directory.
