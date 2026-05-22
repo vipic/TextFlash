@@ -129,6 +129,14 @@ struct SnippetManagerView: View {
             let count = pendingImportedGroups?.reduce(0) { $0 + $1.snippets.count } ?? 0
             Text("这会替换当前所有分组和片段。将导入 \(pendingImportedGroups?.count ?? 0) 个分组、\(count) 个片段。")
         }
+        .alert("操作失败", isPresented: Binding(
+            get: { manager.operationErrorMessage != nil },
+            set: { if !$0 { manager.operationErrorMessage = nil } }
+        )) {
+            Button("确定", role: .cancel) { manager.operationErrorMessage = nil }
+        } message: {
+            Text(manager.operationErrorMessage ?? "")
+        }
     }
 
     // MARK: - 分组侧栏
