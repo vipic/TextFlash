@@ -284,6 +284,21 @@ final class SnippetManager: ObservableObject {
         try replaceAllGroups(parseImportJSONData(data))
     }
 
+    func backupDirectoryURL() throws -> URL {
+        guard let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else {
+            throw SnippetImportExportError.backupDirectoryUnavailable
+        }
+
+        let backupDir = appSupport
+            .appendingPathComponent("TextFlash")
+            .appendingPathComponent("Backups")
+        try FileManager.default.createDirectory(at: backupDir, withIntermediateDirectories: true)
+        return backupDir
+    }
+
     // MARK: - 内部方法
 
     /// 从数据库重新加载全部数据
@@ -315,15 +330,7 @@ final class SnippetManager: ObservableObject {
 
     private func writeAutomaticBackup() throws {
         guard !groups.isEmpty else { return }
-        guard let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first else { return }
-
-        let backupDir = appSupport
-            .appendingPathComponent("TextFlash")
-            .appendingPathComponent("Backups")
-        try FileManager.default.createDirectory(at: backupDir, withIntermediateDirectories: true)
+        let backupDir = try backupDirectoryURL()
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
@@ -394,6 +401,7 @@ enum SnippetBackupValidator {
 enum SnippetImportExportError: LocalizedError {
     case databaseWriteFailed
     case invalidBackup(String)
+    case backupDirectoryUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -401,6 +409,8 @@ enum SnippetImportExportError: LocalizedError {
             return "写入数据库失败"
         case .invalidBackup(let message):
             return "备份文件无效：\(message)"
+        case .backupDirectoryUnavailable:
+            return "无法打开备份目录"
         }
     }
 }

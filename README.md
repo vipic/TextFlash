@@ -38,6 +38,8 @@ Automatic import backups are stored in:
 
 The app keeps the newest 20 automatic backups.
 
+Use the folder button in the manager toolbar to open the backup directory.
+
 ## App Exclusions
 
 Use the menu bar item to pause expansion, exclude the focused app, or manage the exclusion list. Exclusions are stored in `UserDefaults` by bundle identifier.

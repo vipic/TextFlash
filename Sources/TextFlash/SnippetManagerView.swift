@@ -562,6 +562,13 @@ struct SnippetManagerView: View {
             .help("导出片段")
 
             Button {
+                openBackupDirectory()
+            } label: {
+                Image(systemName: "folder")
+            }
+            .help("打开备份目录")
+
+            Button {
                 if let gid = manager.selectedGroupID {
                     manager.editMode = .new(inGroup: gid)
                 } else if let first = manager.groups.first {
@@ -598,6 +605,14 @@ struct SnippetManagerView: View {
         do {
             let data = try Data(contentsOf: url)
             pendingImportedGroups = try manager.parseImportJSONData(data)
+        } catch {
+            importExportError = error.localizedDescription
+        }
+    }
+
+    private func openBackupDirectory() {
+        do {
+            NSWorkspace.shared.open(try manager.backupDirectoryURL())
         } catch {
             importExportError = error.localizedDescription
         }
