@@ -12,6 +12,7 @@ struct SnippetManagerView: View {
     @State private var hoverAddGroup = false
     @State private var pendingGroupDeletion: SnippetGroup?
     @State private var pendingSnippetDeletion: PendingSnippetDeletion?
+    @State private var pendingImportedGroups: [SnippetGroup]?
     @State private var importExportError: String?
 
     // MARK: - 配色常量
@@ -109,6 +110,24 @@ struct SnippetManagerView: View {
             Button("确定", role: .cancel) { importExportError = nil }
         } message: {
             Text(importExportError ?? "")
+        }
+        .alert("导入片段？", isPresented: Binding(
+            get: { pendingImportedGroups != nil },
+            set: { if !$0 { pendingImportedGroups = nil } }
+        )) {
+            Button("取消", role: .cancel) { pendingImportedGroups = nil }
+            Button("导入并覆盖", role: .destructive) {
+                guard let groups = pendingImportedGroups else { return }
+                do {
+                    try manager.replaceAllGroups(groups)
+                } catch {
+                    importExportError = error.localizedDescription
+                }
+                pendingImportedGroups = nil
+            }
+        } message: {
+            let count = pendingImportedGroups?.reduce(0) { $0 + $1.snippets.count } ?? 0
+            Text("这会替换当前所有分组和片段。将导入 \(pendingImportedGroups?.count ?? 0) 个分组、\(count) 个片段。")
         }
     }
 
@@ -542,7 +561,7 @@ struct SnippetManagerView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             let data = try Data(contentsOf: url)
-            try manager.importJSONData(data)
+            pendingImportedGroups = try manager.parseImportJSONData(data)
         } catch {
             importExportError = error.localizedDescription
         }

@@ -217,9 +217,14 @@ final class SnippetManager: ObservableObject {
         return try encoder.encode(SnippetBackup(groups: groups))
     }
 
-    func importJSONData(_ data: Data) throws {
+    func parseImportJSONData(_ data: Data) throws -> [SnippetGroup] {
         let backup = try JSONDecoder().decode(SnippetBackup.self, from: data)
         let normalizedGroups = backup.groups.isEmpty ? [SnippetGroup(name: "通用")] : backup.groups
+        try validateImportGroups(normalizedGroups)
+        return normalizedGroups
+    }
+
+    func replaceAllGroups(_ normalizedGroups: [SnippetGroup]) throws {
         guard db.replaceAllGroups(normalizedGroups) else {
             throw SnippetImportExportError.databaseWriteFailed
         }
@@ -228,6 +233,10 @@ final class SnippetManager: ObservableObject {
         selectedSnippetID = nil
         searchQuery = ""
         notify()
+    }
+
+    func importJSONData(_ data: Data) throws {
+        try replaceAllGroups(parseImportJSONData(data))
     }
 
     // MARK: - 内部方法
@@ -251,6 +260,32 @@ final class SnippetManager: ObservableObject {
     private func notify() {
         NotificationCenter.default.post(name: .textFlashSnippetsDidChange, object: self)
     }
+
+    private func validateImportGroups(_ groups: [SnippetGroup]) throws {
+        var seenAbbreviations: Set<String> = []
+
+        for group in groups {
+            if group.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                throw SnippetImportExportError.invalidBackup("存在空分组名称")
+            }
+
+            for snippet in group.snippets {
+                let abbreviation = snippet.abbreviation.trimmingCharacters(in: .whitespacesAndNewlines)
+                let expansion = snippet.expandedText.trimmingLeadingWhitespaceAndNewlines()
+
+                if abbreviation.isEmpty {
+                    throw SnippetImportExportError.invalidBackup("存在空缩写触发词")
+                }
+                if expansion.isEmpty {
+                    throw SnippetImportExportError.invalidBackup("缩写 \(snippet.abbreviation) 的展开文本为空")
+                }
+                if seenAbbreviations.contains(abbreviation) {
+                    throw SnippetImportExportError.invalidBackup("缩写 \(abbreviation) 重复")
+                }
+                seenAbbreviations.insert(abbreviation)
+            }
+        }
+    }
 }
 
 private struct SnippetBackup: Codable {
@@ -259,11 +294,14 @@ private struct SnippetBackup: Codable {
 
 enum SnippetImportExportError: LocalizedError {
     case databaseWriteFailed
+    case invalidBackup(String)
 
     var errorDescription: String? {
         switch self {
         case .databaseWriteFailed:
             return "写入数据库失败"
+        case .invalidBackup(let message):
+            return "备份文件无效：\(message)"
         }
     }
 }
