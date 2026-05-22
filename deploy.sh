@@ -74,6 +74,8 @@ if $NEED_BUNDLE; then
     <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>TextFlash 需要辅助功能权限以监听键盘事件并展开文本。</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>TextFlash 需要辅助功能权限以监听键盘事件并展开文本。</string>
 </dict>
 </plist>
 PLIST

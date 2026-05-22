@@ -19,6 +19,7 @@
 - Use the last non-TextFlash foreground app as the exclusion target so TextFlash windows do not exclude themselves.
 - Extracted snippet matching into a testable matcher with unit coverage.
 - Hardened release packaging with tests, signing/notarization checks, cleanup, and DMG signing.
+- Added Accessibility usage descriptions to generated development and release app bundles.
 - Prevented release packaging from stripping SwiftPM build artifacts and added clean-tree checks for publishing.
 - Added CI for shell syntax checks, Swift tests, and release builds.
 - Added project README with development, backup, exclusion, and release workflows.
