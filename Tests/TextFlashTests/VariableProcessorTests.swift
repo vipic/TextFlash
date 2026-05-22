@@ -169,6 +169,13 @@ private func makeProcessor(
     #expect(offset == -1)
 }
 
+@Test func tabVariable() {
+    let p = makeProcessor()
+    let (result, offset) = p.process(text: "A{tab}B")
+    #expect(result == "A\tB")
+    #expect(offset == -1)
+}
+
 // MARK: - 转义
 
 @Test func escapedBrace() {

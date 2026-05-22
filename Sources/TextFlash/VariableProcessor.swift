@@ -8,6 +8,7 @@ import AppKit
 /// - `{datetime:format}` — 当前日期时间，format 为 DateFormatter 模式（如 `yyyy-MM-dd HH:mm`）
 /// - `{clipboard}` — 当前系统剪贴板纯文本内容
 /// - `{enter}` — 替换为换行符 `\n`
+/// - `{tab}` — 替换为制表符 `\t`
 ///
 /// 转义规则：
 /// - `\{` → 输出字面量 `{`
@@ -128,6 +129,10 @@ public struct VariableProcessor {
 
         if trimmed == "enter" {
             return ("\n", -1)
+        }
+
+        if trimmed == "tab" {
+            return ("\t", -1)
         }
 
         if trimmed == "clipboard" {

@@ -36,6 +36,7 @@ struct SyntaxHighlightedText: View {
             case plain      // 普通文本
             case clipboard  // {clipboard} — 绿色
             case enter      // {enter} — 橙色
+            case tab        // {tab} — 紫色
             case cursor     // {cursor} — 灰色
             case datetime   // {datetime:...} — 蓝色
         }
@@ -84,6 +85,7 @@ struct SyntaxHighlightedText: View {
         let trimmed = variable.trimmingCharacters(in: .whitespaces)
         if trimmed == "clipboard" { return .clipboard }
         if trimmed == "enter" { return .enter }
+        if trimmed == "tab" { return .tab }
         if trimmed == "cursor" { return .cursor }
         if trimmed.hasPrefix("datetime") { return .datetime }
         return .plain
@@ -94,6 +96,7 @@ struct SyntaxHighlightedText: View {
         switch kind {
         case .clipboard: return "剪贴板"
         case .enter: return "↵ 换行"
+        case .tab: return "⇥ Tab"
         case .cursor: return "▎光标"
         case .datetime: return "日期时间"
         case .plain: return "{\(variable)}"
@@ -114,6 +117,9 @@ struct SyntaxHighlightedText: View {
 
         case .enter:
             pillTag(segment.text, bg: Color.orange.opacity(0.15), fg: .orange, compact: compact)
+
+        case .tab:
+            pillTag(segment.text, bg: Color.purple.opacity(0.15), fg: .purple, compact: compact)
 
         case .cursor:
             pillTag(segment.text, bg: Color.white.opacity(0.10), fg: .secondary, compact: compact)

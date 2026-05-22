@@ -283,14 +283,39 @@ public final class EventController {
             return Unmanaged.passUnretained(event)
         }
 
+        let shouldConsume: Bool
+        if Thread.isMainThread {
+            shouldConsume = processKeyboardEvent(event)
+        } else {
+            shouldConsume = DispatchQueue.main.sync {
+                processKeyboardEvent(event)
+            }
+        }
+
+        return shouldConsume ? nil : Unmanaged.passUnretained(event)
+    }
+
+    /// Updates the input buffer and returns true when the original keyDown event
+    /// must be suppressed because TextFlash will re-inject the trigger itself.
+    private func processKeyboardEvent(_ event: CGEvent) -> Bool {
+        guard !isInjecting else { return false }
+
         // 过滤修饰键组合（Cmd/Ctrl 快捷键不触发展开）
         let flags = event.flags
         if flags.contains(.maskCommand) || flags.contains(.maskControl) {
             // 快捷键触发了，重置输入缓冲区
-            DispatchQueue.main.async { [weak self] in
-                self?.inputBuffer = ""
+            inputBuffer = ""
+            return false
+        }
+
+        let kc = event.getIntegerValueField(.keyboardEventKeycode)
+
+        // 退格键：从缓冲区移除最后一个字符
+        if kc == 51 { // kVK_Delete
+            if !inputBuffer.isEmpty {
+                inputBuffer.removeLast()
             }
-            return Unmanaged.passUnretained(event)
+            return false
         }
 
         // 获取按键的 Unicode 字符
@@ -304,89 +329,74 @@ public final class EventController {
 
         // 无 Unicode 字符（如功能键/方向键/输入法组合中）→ 忽略
         guard unicodeLength > 0 else {
-            return Unmanaged.passUnretained(event)
-        }
-
-        let char = Character(UnicodeScalar(unicodeBuffer[0])!)
-        let kc = event.getIntegerValueField(.keyboardEventKeycode)
-
-        // 退格键：从缓冲区移除最后一个字符
-        if kc == 51 { // kVK_Delete
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self, !self.inputBuffer.isEmpty else { return }
-                self.inputBuffer.removeLast()
-            }
-            return Unmanaged.passUnretained(event)
+            return false
         }
 
         // 非打印字符跳过（退格除外）
         guard unicodeLength == 1 else {
-            return Unmanaged.passUnretained(event)
+            return false
         }
+
+        guard let scalar = UnicodeScalar(unicodeBuffer[0]) else {
+            return false
+        }
+        let char = Character(scalar)
 
         // 触发字符检查
         if triggerCharacters.contains(char) {
-            DispatchQueue.main.async { [weak self] in
-                self?.handleTrigger(char)
+            defer { inputBuffer = "" }
+            guard let match = matchingExpansion(in: inputBuffer) else {
+                return false
             }
-            DispatchQueue.main.async { [weak self] in
-                self?.inputBuffer = ""
+            guard !isFocusedElementSecureOrUnknown() else {
+                return false
             }
-        } else {
-            // 非触发字符 → 一律加入 buffer，Trie 检查即时匹配
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.inputBuffer.append(char)
-                let buffer = self.inputBuffer
-
-                // 从最长后缀开始尝试匹配
-                for i in buffer.indices {
-                    let suffix = String(buffer[i...])
-                    let (matched, expansion) = self.trie.search(suffix)
-                    if expansion != nil {
-                        // 完整匹配 → 即时触发
-                        self.handleTrigger(nil)
-                        self.inputBuffer = ""
-                        return
-                    }
-                    if matched {
-                        // 部分前缀匹配 → 保留 buffer 等待更多输入
-                        return
-                    }
-                    // matched==false → 这个后缀长度不可能匹配，试试更短的
-                }
-                // 所有后缀都不匹配 → 清空
-                self.inputBuffer = ""
-            }
+            inject(abbreviation: match.abbreviation, expansion: match.expansion, triggerChar: char)
+            return true
         }
 
-        return Unmanaged.passUnretained(event)
+        // 非触发字符 → 一律加入 buffer，Trie 检查即时匹配
+        inputBuffer.append(char)
+        guard let match = matchingExpansion(in: inputBuffer) else {
+            trimBufferToPossibleSuffix()
+            return false
+        }
+
+        // 即时触发时原始按键需要先进入目标应用，然后再回删完整缩写。
+        if !isFocusedElementSecureOrUnknown() {
+            inject(abbreviation: match.abbreviation, expansion: match.expansion, triggerChar: nil)
+        }
+        inputBuffer = ""
+        return false
     }
 
     // MARK: - Trigger Handling
 
-    /// 触发字符到达时的匹配与注入逻辑（主线程调用）
-    /// - Parameter triggerChar: 触发字符；nil 表示即时触发（无外部触发字符）
-    private func handleTrigger(_ triggerChar: Character?) {
-        guard !isInjecting else { return }
-        let buffer = inputBuffer
-        guard !buffer.isEmpty else { return }
+    private func matchingExpansion(in buffer: String) -> (abbreviation: String, expansion: String)? {
+        guard !buffer.isEmpty else { return nil }
 
-        // 从最长后缀搜，找匹配的缩写（和即时触发使用相同的后缀扫描逻辑）
         for i in buffer.indices {
             let suffix = String(buffer[i...])
             let (matched, expansion) = trie.search(suffix)
             if let text = expansion {
-                // 完整匹配找到
-                guard !isSecureTextField() else { return }
-                inject(abbreviation: suffix, expansion: text, triggerChar: triggerChar)
-                return
+                return (suffix, text)
             }
             if matched {
-                // 部分前缀匹配（如 "d" 是 "ddm" 的前缀）→ 不继续扫更短后缀
+                return nil
+            }
+        }
+        return nil
+    }
+
+    private func trimBufferToPossibleSuffix() {
+        for i in inputBuffer.indices {
+            let suffix = String(inputBuffer[i...])
+            if trie.search(suffix).matched {
+                inputBuffer = suffix
                 return
             }
         }
+        inputBuffer = ""
     }
 
     // MARK: - Text Injection
@@ -487,22 +497,22 @@ public final class EventController {
 
     // MARK: - Secure Field Detection
 
-    /// 检查当前焦点元素是否为安全文本域（密码框）
-    private func isSecureTextField() -> Bool {
+    /// 检查当前焦点元素是否为安全文本域（密码框）。无法确认时保守阻止展开。
+    private func isFocusedElementSecureOrUnknown() -> Bool {
         let systemWide = AXUIElementCreateSystemWide()
         var focusedApp: CFTypeRef?
         guard AXUIElementCopyAttributeValue(
             systemWide, kAXFocusedApplicationAttribute as CFString, &focusedApp
-        ) == .success else { return false }
-        guard let app = focusedApp else { return false }
+        ) == .success else { return true }
+        guard let app = focusedApp else { return true }
 
         var focusedElement: CFTypeRef?
         guard AXUIElementCopyAttributeValue(
             (app as! AXUIElement),
             kAXFocusedUIElementAttribute as CFString,
             &focusedElement
-        ) == .success else { return false }
-        guard let element = focusedElement else { return false }
+        ) == .success else { return true }
+        guard let element = focusedElement else { return true }
 
         let axElement = element as! AXUIElement
 
