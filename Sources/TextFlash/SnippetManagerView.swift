@@ -5,6 +5,7 @@ import AppKit
 
 struct SnippetManagerView: View {
     @ObservedObject var manager: SnippetManager
+    @ObservedObject private var settings = AppSettings.shared
     @State private var hasAccessibilityPermission = EventController.shared.checkPermission()
     @State private var groupNameInput: String = ""
     @State private var showNewGroupAlert = false
@@ -51,21 +52,21 @@ struct SnippetManagerView: View {
             SnippetEditView(manager: manager)
                 .preferredColorScheme(nil)  // 跟随系统外观
         }
-        .alert("新建分组", isPresented: $showNewGroupAlert) {
-            TextField("分组名称", text: $groupNameInput)
-            Button("取消", role: .cancel) { groupNameInput = "" }
-            Button("确定") {
+        .alert(L10n.t("snippets.group.new.title"), isPresented: $showNewGroupAlert) {
+            TextField(L10n.t("snippets.group.name"), text: $groupNameInput)
+            Button(L10n.t("common.cancel"), role: .cancel) { groupNameInput = "" }
+            Button(L10n.t("common.confirm")) {
                 let name = groupNameInput.trimmingCharacters(in: .whitespaces)
                 if !name.isEmpty { manager.addGroup(name: name) }
                 groupNameInput = ""
             }
         } message: {
-            Text("输入新分组的名称")
+            Text(L10n.t("snippets.group.new.message"))
         }
-        .alert("重命名分组", isPresented: $showRenameGroupAlert) {
-            TextField("分组名称", text: $groupNameInput)
-            Button("取消", role: .cancel) { groupNameInput = ""; renameTarget = nil }
-            Button("确定") {
+        .alert(L10n.t("snippets.group.rename.title"), isPresented: $showRenameGroupAlert) {
+            TextField(L10n.t("snippets.group.name"), text: $groupNameInput)
+            Button(L10n.t("common.cancel"), role: .cancel) { groupNameInput = ""; renameTarget = nil }
+            Button(L10n.t("common.confirm")) {
                 let name = groupNameInput.trimmingCharacters(in: .whitespaces)
                 if !name.isEmpty, let target = renameTarget {
                     manager.renameGroup(target, to: name)
@@ -74,50 +75,50 @@ struct SnippetManagerView: View {
                 renameTarget = nil
             }
         } message: {
-            Text("输入新的分组名称")
+            Text(L10n.t("snippets.group.rename.message"))
         }
-        .alert("删除分组？", isPresented: Binding(
+        .alert(L10n.t("snippets.group.delete.title"), isPresented: Binding(
             get: { pendingGroupDeletion != nil },
             set: { if !$0 { pendingGroupDeletion = nil } }
         )) {
-            Button("取消", role: .cancel) { pendingGroupDeletion = nil }
-            Button("删除", role: .destructive) {
+            Button(L10n.t("common.cancel"), role: .cancel) { pendingGroupDeletion = nil }
+            Button(L10n.t("common.delete"), role: .destructive) {
                 if let group = pendingGroupDeletion {
                     manager.deleteGroup(group)
                 }
                 pendingGroupDeletion = nil
             }
         } message: {
-            Text("分组内的所有片段都会被删除，此操作无法撤销。")
+            Text(L10n.t("snippets.group.delete.message"))
         }
-        .alert("删除片段？", isPresented: Binding(
+        .alert(L10n.t("snippets.delete.title"), isPresented: Binding(
             get: { pendingSnippetDeletion != nil },
             set: { if !$0 { pendingSnippetDeletion = nil } }
         )) {
-            Button("取消", role: .cancel) { pendingSnippetDeletion = nil }
-            Button("删除", role: .destructive) {
+            Button(L10n.t("common.cancel"), role: .cancel) { pendingSnippetDeletion = nil }
+            Button(L10n.t("common.delete"), role: .destructive) {
                 if let pending = pendingSnippetDeletion {
                     manager.deleteSnippet(pending.snippet, fromGroup: pending.groupID)
                 }
                 pendingSnippetDeletion = nil
             }
         } message: {
-            Text("这个片段会被永久删除。")
+            Text(L10n.t("snippets.delete.message"))
         }
-        .alert("导入导出失败", isPresented: Binding(
+        .alert(L10n.t("snippets.importExport.failed"), isPresented: Binding(
             get: { importExportError != nil },
             set: { if !$0 { importExportError = nil } }
         )) {
-            Button("确定", role: .cancel) { importExportError = nil }
+            Button(L10n.t("common.confirm"), role: .cancel) { importExportError = nil }
         } message: {
             Text(importExportError ?? "")
         }
-        .alert("导入片段？", isPresented: Binding(
+        .alert(L10n.t("snippets.import.title"), isPresented: Binding(
             get: { pendingImportedGroups != nil },
             set: { if !$0 { pendingImportedGroups = nil } }
         )) {
-            Button("取消", role: .cancel) { pendingImportedGroups = nil }
-            Button("导入并覆盖", role: .destructive) {
+            Button(L10n.t("common.cancel"), role: .cancel) { pendingImportedGroups = nil }
+            Button(L10n.t("snippets.import.confirm"), role: .destructive) {
                 guard let groups = pendingImportedGroups else { return }
                 do {
                     try manager.replaceAllGroups(groups)
@@ -128,13 +129,13 @@ struct SnippetManagerView: View {
             }
         } message: {
             let count = pendingImportedGroups?.reduce(0) { $0 + $1.snippets.count } ?? 0
-            Text("这会替换当前所有分组和片段。将导入 \(pendingImportedGroups?.count ?? 0) 个分组、\(count) 个片段。")
+            Text(L10n.f("snippets.import.message", pendingImportedGroups?.count ?? 0, count))
         }
-        .alert("操作失败", isPresented: Binding(
+        .alert(L10n.t("snippets.operation.failed"), isPresented: Binding(
             get: { manager.operationErrorMessage != nil },
             set: { if !$0 { manager.operationErrorMessage = nil } }
         )) {
-            Button("确定", role: .cancel) { manager.operationErrorMessage = nil }
+            Button(L10n.t("common.confirm"), role: .cancel) { manager.operationErrorMessage = nil }
         } message: {
             Text(manager.operationErrorMessage ?? "")
         }
@@ -150,7 +151,7 @@ struct SnippetManagerView: View {
 
             // 标题行
             HStack {
-                Text("分组")
+                Text(L10n.t("snippets.group.sidebarTitle"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                     .textCase(.uppercase)
@@ -170,7 +171,7 @@ struct SnippetManagerView: View {
                         .fill(Color.primary.opacity(hoverAddGroup ? 0.14 : 0.07))
                 )
                 .onHover { hoverAddGroup = $0 }
-                .help("新建分组")
+                .help(L10n.t("snippets.group.addHelp"))
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 8)
@@ -218,13 +219,13 @@ struct SnippetManagerView: View {
 
     @ViewBuilder
     private func groupContextMenu(_ group: SnippetGroup) -> some View {
-        Button("重命名") {
+        Button(L10n.t("common.rename")) {
             renameTarget = group
             groupNameInput = group.name
             showRenameGroupAlert = true
         }
         Divider()
-        Button("删除", role: .destructive) {
+        Button(L10n.t("common.delete"), role: .destructive) {
             pendingGroupDeletion = group
         }
         .disabled(manager.groups.count <= 1)
@@ -261,11 +262,11 @@ struct SnippetManagerView: View {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle")
                     .foregroundColor(.orange)
-                Text("辅助功能权限未启用，文本展开不会生效。")
+                Text(L10n.t("snippets.permission.banner"))
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                 Spacer()
-                Button("打开系统设置") {
+                Button(L10n.t("snippets.permission.open")) {
                     EventController.shared.requestPermission()
                     hasAccessibilityPermission = EventController.shared.checkPermission()
                 }
@@ -289,7 +290,7 @@ struct SnippetManagerView: View {
                 .foregroundColor(.secondary)
                 .padding(.leading, 10)
 
-            TextField("搜索片段…", text: $manager.searchQuery)
+            TextField(L10n.t("snippets.search.placeholder"), text: $manager.searchQuery)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
                 .padding(.vertical, 7)
@@ -309,7 +310,7 @@ struct SnippetManagerView: View {
             Text("·")
                 .foregroundColor(.secondary)
             let count = manager.filteredSnippets.count
-            Text("\(count) 个片段")
+            Text(L10n.f("snippets.count", count))
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
             Spacer()
@@ -368,11 +369,11 @@ struct SnippetManagerView: View {
 
     @ViewBuilder
     private func snippetContextMenu(_ snippet: Snippet, group: SnippetGroup) -> some View {
-        Button("编辑") {
+        Button(L10n.t("common.edit")) {
             manager.editMode = .existing(snippet)
         }
         Divider()
-        Button("删除", role: .destructive) {
+        Button(L10n.t("common.delete"), role: .destructive) {
             pendingSnippetDeletion = PendingSnippetDeletion(snippet: snippet, groupID: group.id)
         }
     }
@@ -394,13 +395,13 @@ struct SnippetManagerView: View {
         VStack(alignment: .leading, spacing: 0) {
             // 标题栏
             HStack {
-                Text("片段详情")
+                Text(L10n.t("snippets.detail.title"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                     .textCase(.uppercase)
                     .tracking(0.8)
                 Spacer()
-                detailActionButton(symbol: "pencil", help: "编辑 (⌘E)") {
+                detailActionButton(symbol: "pencil", help: L10n.t("snippets.detail.editHelp")) {
                     manager.editMode = .existing(snippet)
                 }
             }
@@ -430,7 +431,7 @@ struct SnippetManagerView: View {
 
                     // 展开文本
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("展开文本")
+                        Text(L10n.t("snippets.expandedText"))
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.secondary)
                             .textCase(.uppercase)
@@ -455,7 +456,7 @@ struct SnippetManagerView: View {
     /// 变量颜色图例
     private var variableLegend: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("变量说明")
+            Text(L10n.t("snippets.variables.title"))
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.secondary)
                 .textCase(.uppercase)
@@ -485,7 +486,7 @@ struct SnippetManagerView: View {
             Image(systemName: "text.word.spacing")
                 .font(.system(size: 28))
                 .foregroundColor(.secondary.opacity(0.3))
-            Text("选择片段查看详情")
+            Text(L10n.t("snippets.detail.empty"))
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
         }
@@ -512,11 +513,11 @@ struct SnippetManagerView: View {
                 .font(.system(size: 32))
                 .foregroundColor(.secondary.opacity(0.3))
             if manager.groups.isEmpty {
-                Text("点击 + 按钮创建第一个分组")
+                Text(L10n.t("snippets.empty.createGroup"))
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
             } else {
-                Text("从左侧选择一个分组")
+                Text(L10n.t("snippets.empty.selectGroup"))
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
             }
@@ -530,11 +531,11 @@ struct SnippetManagerView: View {
                 .font(.system(size: 26))
                 .foregroundColor(.secondary.opacity(0.3))
             if hasSearch {
-                Text("没有匹配的片段")
+                Text(L10n.t("snippets.empty.noMatches"))
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             } else {
-                Text("点击右上角 + 新建片段")
+                Text(L10n.t("snippets.empty.createSnippet"))
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
@@ -552,21 +553,21 @@ struct SnippetManagerView: View {
             } label: {
                 Image(systemName: "square.and.arrow.down")
             }
-            .help("导入片段")
+            .help(L10n.t("snippets.toolbar.import"))
 
             Button {
                 exportSnippets()
             } label: {
                 Image(systemName: "square.and.arrow.up")
             }
-            .help("导出片段")
+            .help(L10n.t("snippets.toolbar.export"))
 
             Button {
                 openBackupDirectory()
             } label: {
                 Image(systemName: "folder")
             }
-            .help("打开备份目录")
+            .help(L10n.t("snippets.toolbar.backups"))
 
             Button {
                 if let gid = manager.selectedGroupID {
@@ -577,7 +578,7 @@ struct SnippetManagerView: View {
             } label: {
                 Image(systemName: "plus")
             }
-            .help("新建片段")
+            .help(L10n.t("snippets.toolbar.newSnippet"))
         }
     }
 

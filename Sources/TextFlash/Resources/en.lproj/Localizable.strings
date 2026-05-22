@@ -43,6 +43,70 @@
 "exclusions.addFailed.title" = "Cannot Add App";
 "exclusions.addFailed.message" = "Switch back to the target app before adding it, or use “Exclude Current App” from the menu bar first.";
 
+"common.cancel" = "Cancel";
+"common.confirm" = "OK";
+"common.delete" = "Delete";
+"common.edit" = "Edit";
+"common.rename" = "Rename";
+"common.save" = "Save";
+
+"permission.request.title" = "Accessibility Permission Required";
+"permission.request.message" = "Text expansion needs Accessibility permission to monitor keyboard events and insert text.\n\nEnable this app in System Settings → Privacy & Security → Accessibility.";
+"permission.request.open" = "Open System Settings";
+"permission.request.later" = "Later";
+
+"snippets.group.new.title" = "New Group";
+"snippets.group.rename.title" = "Rename Group";
+"snippets.group.name" = "Group Name";
+"snippets.group.new.message" = "Enter the new group name.";
+"snippets.group.rename.message" = "Enter the updated group name.";
+"snippets.group.delete.title" = "Delete Group?";
+"snippets.group.delete.message" = "All snippets in this group will be deleted. This cannot be undone.";
+"snippets.group.sidebarTitle" = "Groups";
+"snippets.group.addHelp" = "New Group";
+
+"snippets.delete.title" = "Delete Snippet?";
+"snippets.delete.message" = "This snippet will be permanently deleted.";
+"snippets.importExport.failed" = "Import or Export Failed";
+"snippets.import.title" = "Import Snippets?";
+"snippets.import.confirm" = "Import and Replace";
+"snippets.import.message" = "This will replace all current groups and snippets. Importing %d groups and %d snippets.";
+"snippets.operation.failed" = "Operation Failed";
+"snippets.permission.banner" = "Accessibility permission is disabled. Text expansion will not work.";
+"snippets.permission.open" = "Open System Settings";
+"snippets.search.placeholder" = "Search snippets…";
+"snippets.count" = "%d snippets";
+"snippets.detail.title" = "Snippet Details";
+"snippets.expandedText" = "Expanded Text";
+"snippets.variables.title" = "Variables";
+"snippets.detail.empty" = "Select a snippet to view details";
+"snippets.empty.createGroup" = "Click + to create the first group";
+"snippets.empty.selectGroup" = "Select a group from the sidebar";
+"snippets.empty.noMatches" = "No matching snippets";
+"snippets.empty.createSnippet" = "Click + in the toolbar to create a snippet";
+"snippets.toolbar.import" = "Import Snippets";
+"snippets.toolbar.export" = "Export Snippets";
+"snippets.toolbar.backups" = "Open Backup Directory";
+"snippets.toolbar.newSnippet" = "New Snippet";
+"snippets.detail.editHelp" = "Edit (⌘E)";
+
+"edit.new.title" = "New Snippet";
+"edit.existing.title" = "Edit Snippet";
+"edit.group" = "Group";
+"edit.abbreviation" = "Abbreviation";
+"edit.abbreviation.placeholder" = "For example addr, sig";
+"edit.abbreviation.conflict" = "This abbreviation already exists. Choose another trigger.";
+"edit.variables" = "Insert Variables";
+"edit.variable.cursor" = "Cursor";
+"edit.variable.date" = "Date";
+"edit.variable.clipboard" = "Clipboard";
+"edit.variable.enter" = "Enter";
+"edit.variable.tab" = "Tab";
+"edit.expandedText" = "Expanded Text";
+"edit.characterCount" = "%d characters";
+"edit.description" = "Description";
+"edit.description.placeholder" = "Optional note";
+
 "debug.title" = "Debug Panel";
 "debug.subtitle" = "Inspect the event tap, input buffer, and loaded snippets in real time.";
 "debug.eventTap" = "Event Tap";

@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SnippetEditView: View {
     @ObservedObject var manager: SnippetManager
+    @ObservedObject private var settings = AppSettings.shared
 
     @State private var abbreviation: String = ""
     @State private var expandedText: String = ""
@@ -38,11 +39,11 @@ struct SnippetEditView: View {
         VStack(spacing: 0) {
             // 标题栏
             HStack {
-                Text(isNew ? "新建片段" : "编辑片段")
+                Text(isNew ? L10n.t("edit.new.title") : L10n.t("edit.existing.title"))
                     .font(.title3)
                     .fontWeight(.semibold)
                 Spacer()
-                Button("取消") {
+                Button(L10n.t("common.cancel")) {
                     manager.editMode = .inactive
                 }
                 .keyboardShortcut(.escape, modifiers: [])
@@ -68,12 +69,12 @@ struct SnippetEditView: View {
             // 底部按钮
             HStack {
                 Spacer()
-                Button("取消") {
+                Button(L10n.t("common.cancel")) {
                     manager.editMode = .inactive
                 }
                 .keyboardShortcut(.cancelAction)
 
-                Button("保存") {
+                Button(L10n.t("common.save")) {
                     save()
                 }
                 .keyboardShortcut(.return, modifiers: .command)
@@ -91,7 +92,7 @@ struct SnippetEditView: View {
 
     private var groupPicker: some View {
         HStack(spacing: 8) {
-            Text("所属分组").font(.caption).foregroundColor(.secondary)
+            Text(L10n.t("edit.group")).font(.caption).foregroundColor(.secondary)
             Picker("", selection: $selectedGroupID) {
                 ForEach(manager.groups) { group in
                     Text(group.name).tag(group.id as UUID?)
@@ -106,12 +107,12 @@ struct SnippetEditView: View {
 
     private var abbreviationField: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("缩写触发词").font(.caption).foregroundColor(.secondary)
-            TextField("例如 addr, sig", text: $abbreviation)
+            Text(L10n.t("edit.abbreviation")).font(.caption).foregroundColor(.secondary)
+            TextField(L10n.t("edit.abbreviation.placeholder"), text: $abbreviation)
                 .textFieldStyle(.roundedBorder)
                 .font(.system(.body, design: .monospaced))
             if hasAbbreviationConflict {
-                Text("这个缩写已存在，请换一个触发词。")
+                Text(L10n.t("edit.abbreviation.conflict"))
                     .font(.caption2)
                     .foregroundColor(.red)
             }
@@ -122,14 +123,14 @@ struct SnippetEditView: View {
 
     private var variableBar: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("插入变量占位符").font(.caption).foregroundColor(.secondary)
+            Text(L10n.t("edit.variables")).font(.caption).foregroundColor(.secondary)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    VariableButton("光标", raw: "{cursor}", into: $expandedText)
-                    VariableButton("日期", raw: "{datetime:}", into: $expandedText)
-                    VariableButton("剪贴板", raw: "{clipboard}", into: $expandedText)
-                    VariableButton("回车", raw: "{enter}", into: $expandedText)
-                    VariableButton("Tab",  raw: "{tab}", into: $expandedText)
+                    VariableButton(L10n.t("edit.variable.cursor"), raw: "{cursor}", into: $expandedText)
+                    VariableButton(L10n.t("edit.variable.date"), raw: "{datetime:}", into: $expandedText)
+                    VariableButton(L10n.t("edit.variable.clipboard"), raw: "{clipboard}", into: $expandedText)
+                    VariableButton(L10n.t("edit.variable.enter"), raw: "{enter}", into: $expandedText)
+                    VariableButton(L10n.t("edit.variable.tab"), raw: "{tab}", into: $expandedText)
                 }
             }
         }
@@ -140,9 +141,9 @@ struct SnippetEditView: View {
     private var expandedTextField: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("展开文本").font(.caption).foregroundColor(.secondary)
+                Text(L10n.t("edit.expandedText")).font(.caption).foregroundColor(.secondary)
                 Spacer()
-                Text("\(expandedText.count) 字符")
+                Text(L10n.f("edit.characterCount", expandedText.count))
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .monospacedDigit()
@@ -161,8 +162,8 @@ struct SnippetEditView: View {
 
     private var descriptionField: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("描述").font(.caption).foregroundColor(.secondary)
-            TextField("可选：备注/说明", text: $description)
+            Text(L10n.t("edit.description")).font(.caption).foregroundColor(.secondary)
+            TextField(L10n.t("edit.description.placeholder"), text: $description)
                 .textFieldStyle(.roundedBorder)
         }
     }

@@ -43,6 +43,70 @@
 "exclusions.addFailed.title" = "无法添加应用";
 "exclusions.addFailed.message" = "请切回目标应用后再添加，或先从菜单栏使用“排除当前应用”。";
 
+"common.cancel" = "取消";
+"common.confirm" = "确定";
+"common.delete" = "删除";
+"common.edit" = "编辑";
+"common.rename" = "重命名";
+"common.save" = "保存";
+
+"permission.request.title" = "需要辅助功能权限";
+"permission.request.message" = "文本展开需要辅助功能权限来监听键盘事件并注入文本。\n\n请在「系统设置 → 隐私与安全性 → 辅助功能」中启用此应用。";
+"permission.request.open" = "打开系统设置";
+"permission.request.later" = "稍后";
+
+"snippets.group.new.title" = "新建分组";
+"snippets.group.rename.title" = "重命名分组";
+"snippets.group.name" = "分组名称";
+"snippets.group.new.message" = "输入新分组的名称";
+"snippets.group.rename.message" = "输入新的分组名称";
+"snippets.group.delete.title" = "删除分组？";
+"snippets.group.delete.message" = "分组内的所有片段都会被删除，此操作无法撤销。";
+"snippets.group.sidebarTitle" = "分组";
+"snippets.group.addHelp" = "新建分组";
+
+"snippets.delete.title" = "删除片段？";
+"snippets.delete.message" = "这个片段会被永久删除。";
+"snippets.importExport.failed" = "导入导出失败";
+"snippets.import.title" = "导入片段？";
+"snippets.import.confirm" = "导入并覆盖";
+"snippets.import.message" = "这会替换当前所有分组和片段。将导入 %d 个分组、%d 个片段。";
+"snippets.operation.failed" = "操作失败";
+"snippets.permission.banner" = "辅助功能权限未启用，文本展开不会生效。";
+"snippets.permission.open" = "打开系统设置";
+"snippets.search.placeholder" = "搜索片段…";
+"snippets.count" = "%d 个片段";
+"snippets.detail.title" = "片段详情";
+"snippets.expandedText" = "展开文本";
+"snippets.variables.title" = "变量说明";
+"snippets.detail.empty" = "选择片段查看详情";
+"snippets.empty.createGroup" = "点击 + 按钮创建第一个分组";
+"snippets.empty.selectGroup" = "从左侧选择一个分组";
+"snippets.empty.noMatches" = "没有匹配的片段";
+"snippets.empty.createSnippet" = "点击右上角 + 新建片段";
+"snippets.toolbar.import" = "导入片段";
+"snippets.toolbar.export" = "导出片段";
+"snippets.toolbar.backups" = "打开备份目录";
+"snippets.toolbar.newSnippet" = "新建片段";
+"snippets.detail.editHelp" = "编辑 (⌘E)";
+
+"edit.new.title" = "新建片段";
+"edit.existing.title" = "编辑片段";
+"edit.group" = "所属分组";
+"edit.abbreviation" = "缩写触发词";
+"edit.abbreviation.placeholder" = "例如 addr, sig";
+"edit.abbreviation.conflict" = "这个缩写已存在，请换一个触发词。";
+"edit.variables" = "插入变量占位符";
+"edit.variable.cursor" = "光标";
+"edit.variable.date" = "日期";
+"edit.variable.clipboard" = "剪贴板";
+"edit.variable.enter" = "回车";
+"edit.variable.tab" = "Tab";
+"edit.expandedText" = "展开文本";
+"edit.characterCount" = "%d 字符";
+"edit.description" = "描述";
+"edit.description.placeholder" = "可选：备注/说明";
+
 "debug.title" = "调试面板";
 "debug.subtitle" = "实时查看事件 tap、输入缓冲区和已加载片段。";
 "debug.eventTap" = "Event Tap";

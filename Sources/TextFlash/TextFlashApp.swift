@@ -423,7 +423,7 @@ struct ExclusionsView: View {
             get: { exclusionErrorMessage != nil },
             set: { if !$0 { exclusionErrorMessage = nil } }
         )) {
-            Button("确定", role: .cancel) { exclusionErrorMessage = nil }
+            Button(L10n.t("common.confirm"), role: .cancel) { exclusionErrorMessage = nil }
         } message: {
             Text(exclusionErrorMessage ?? "")
         }

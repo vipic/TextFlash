@@ -196,15 +196,11 @@ public final class EventController {
             // 用户拒绝了系统弹窗 → 引导打开系统设置
             DispatchQueue.main.async {
                 let alert = NSAlert()
-                alert.messageText = "需要辅助功能权限"
-                alert.informativeText = """
-                文本展开需要辅助功能权限来监听键盘事件并注入文本。
-
-                请在「系统设置 → 隐私与安全性 → 辅助功能」中启用此应用。
-                """
+                alert.messageText = L10n.t("permission.request.title")
+                alert.informativeText = L10n.t("permission.request.message")
                 alert.alertStyle = .informational
-                alert.addButton(withTitle: "打开系统设置")
-                alert.addButton(withTitle: "稍后")
+                alert.addButton(withTitle: L10n.t("permission.request.open"))
+                alert.addButton(withTitle: L10n.t("permission.request.later"))
                 if alert.runModal() == .alertFirstButtonReturn {
                     if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
                         NSWorkspace.shared.open(url)
