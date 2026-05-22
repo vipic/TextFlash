@@ -1,10 +1,10 @@
 #!/bin/bash
 # TextFlash Release — 生产发布
-# 流程：release 编译 → 去除符号 → DMG 打包 → 签名
+# 流程：测试 → release 编译 → 去除符号 → DMG 打包 → 签名
 # 用法: ./release.sh [version] [--publish]
 #   ./release.sh 0.1.0              # 仅构建 DMG
 #   ./release.sh 0.1.0 --publish    # 构建 + 推 tag + 创建 GitHub Release
-set -e
+set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="TextFlash"
@@ -17,6 +17,12 @@ BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 IDENTITY="${CODESIGN_IDENTITY:-}"
 NOTARIZE="${NOTARIZE:-false}"
+RUN_TESTS="${RUN_TESTS:-true}"
+
+cleanup() {
+    rm -rf "$STAGING"
+}
+trap cleanup EXIT
 
 # 解析 --publish 标志
 PUBLISH=false
@@ -29,24 +35,33 @@ echo ""
 
 cd "$PROJECT_DIR"
 
-# ── 1. Release 编译 ──
-echo "━━━ 1/5 Release 编译 ━━━"
-swift build -c release -Xswiftc -Osize 2>&1 | tail -3
+# ── 1. 测试 ──
+echo "━━━ 1/6 测试 ━━━"
+if [ "$RUN_TESTS" = "true" ]; then
+    swift test
+else
+    echo "   跳过测试（RUN_TESTS=${RUN_TESTS}）"
+fi
+
+# ── 2. Release 编译 ──
+echo ""
+echo "━━━ 2/6 Release 编译 ━━━"
+swift build -c release
 
 BIN="$BUILD_DIR/$APP_NAME"
 test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }
 
-# ── 2. 去除符号 ──
+# ── 3. 去除符号 ──
 echo ""
-echo "━━━ 2/5 去除调试符号 ━━━"
+echo "━━━ 3/6 去除调试符号 ━━━"
 BIN_SIZE_BEFORE=$(stat -f%z "$BIN")
 strip -S "$BIN" 2>/dev/null || true
 BIN_SIZE_AFTER=$(stat -f%z "$BIN")
 echo "   二进制: $(numfmt --to=iec $BIN_SIZE_BEFORE 2>/dev/null || echo "${BIN_SIZE_BEFORE}") → $(numfmt --to=iec $BIN_SIZE_AFTER 2>/dev/null || echo "${BIN_SIZE_AFTER}")"
 
-# ── 3. 组装 .app ──
+# ── 4. 组装 .app ──
 echo ""
-echo "━━━ 3/5 组装 .app bundle ━━━"
+echo "━━━ 4/6 组装 .app bundle ━━━"
 rm -rf "$STAGING"
 mkdir -p "$STAGING/$APP_NAME.app/Contents/MacOS"
 mkdir -p "$STAGING/$APP_NAME.app/Contents/Resources"
@@ -88,9 +103,9 @@ cat > "$STAGING/$APP_NAME.app/Contents/Info.plist" << PLIST
 </plist>
 PLIST
 
-# ── 4. 代码签名 ──
+# ── 5. 代码签名 ──
 echo ""
-echo "━━━ 4/5 代码签名 ━━━"
+echo "━━━ 5/6 代码签名 ━━━"
 
 CERT_OK=true
 if [ -n "$IDENTITY" ] && security find-identity -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
@@ -119,9 +134,9 @@ if $PUBLISH && [ "$NOTARIZE" != "true" ]; then
     exit 1
 fi
 
-# ── 5. DMG 打包 ──
+# ── 6. DMG 打包 ──
 echo ""
-echo "━━━ 5/5 DMG 打包 ━━━"
+echo "━━━ 6/6 DMG 打包 ━━━"
 DMG_PATH="$PROJECT_DIR/$DMG_NAME"
 rm -f "$DMG_PATH"
 
@@ -157,8 +172,6 @@ if [ "$NOTARIZE" = "true" ]; then
         --wait
     xcrun stapler staple "$DMG_PATH"
 fi
-
-rm -rf "$STAGING"
 
 # ── 发布到 GitHub Releases ──
 if $PUBLISH; then
