@@ -9,6 +9,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var snippetWindow: NSWindow?
     private var debugWindow: NSWindow?
+    private var pauseMenuItem: NSMenuItem?
+    private var permissionMenuItem: NSMenuItem?
+    private var exclusionMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // LSUIElement：隐藏 Dock 图标
@@ -44,10 +47,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "打开片段管理…", action: #selector(openSnippetWindow), keyEquivalent: ""))
+        let pauseItem = NSMenuItem(title: "暂停展开", action: #selector(togglePaused), keyEquivalent: "")
+        menu.addItem(pauseItem)
+        pauseMenuItem = pauseItem
+
+        let permissionItem = NSMenuItem(title: "检查辅助功能权限", action: #selector(checkAccessibilityPermission), keyEquivalent: "")
+        menu.addItem(permissionItem)
+        permissionMenuItem = permissionItem
+
+        let exclusionItem = NSMenuItem(title: "排除当前应用", action: #selector(toggleFocusedAppExclusion), keyEquivalent: "")
+        menu.addItem(exclusionItem)
+        exclusionMenuItem = exclusionItem
+
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "调试面板…", action: #selector(openDebugWindow), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "关于 TextFlash", action: #selector(showAbout), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "退出 TextFlash", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.delegate = self
         statusItem?.menu = menu
     }
 
@@ -100,6 +117,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showAbout() {
         NSApp.orderFrontStandardAboutPanel(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func togglePaused() {
+        EventController.shared.togglePaused()
+        updateMenuState()
+    }
+
+    @objc private func checkAccessibilityPermission() {
+        if EventController.shared.checkPermission() {
+            let alert = NSAlert()
+            alert.messageText = "辅助功能权限已启用"
+            alert.informativeText = "TextFlash 可以监听键盘事件并展开文本。"
+            alert.alertStyle = .informational
+            alert.runModal()
+        } else {
+            EventController.shared.requestPermission()
+        }
+    }
+
+    @objc private func toggleFocusedAppExclusion() {
+        guard let app = EventController.shared.toggleExclusionForFocusedApplication() else {
+            let alert = NSAlert()
+            alert.messageText = "无法识别当前应用"
+            alert.informativeText = "请切回目标应用后再从菜单栏切换排除状态。"
+            alert.alertStyle = .warning
+            alert.runModal()
+            return
+        }
+
+        updateMenuState(focusedApp: app)
     }
 
     @MainActor @objc private func openDebugWindow() {
@@ -157,6 +204,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func snippetsDidChange(_ notification: Notification) {
         loadSnippetsIntoController()
+    }
+
+    private func updateMenuState(focusedApp: FocusedApplicationInfo? = nil) {
+        let controller = EventController.shared
+        pauseMenuItem?.title = controller.isPaused ? "恢复展开" : "暂停展开"
+        permissionMenuItem?.title = controller.checkPermission() ? "辅助功能权限：已启用" : "辅助功能权限：需要启用"
+
+        if let app = focusedApp ?? controller.focusedApplicationInfo() {
+            let excluded = controller.excludedBundleIDs.contains(app.bundleID)
+            exclusionMenuItem?.title = excluded ? "取消排除 \(app.localizedName)" : "排除 \(app.localizedName)"
+        } else {
+            exclusionMenuItem?.title = "排除当前应用"
+        }
+    }
+}
+
+extension AppDelegate: NSMenuDelegate {
+    func menuWillOpen(_ menu: NSMenu) {
+        updateMenuState()
     }
 }
 

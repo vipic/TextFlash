@@ -124,6 +124,21 @@ public final class EventController {
     ]
     /// 注入时的事件源标记值（防止自触发）
     private static let injectionTag: Int64 = 0x53_4E_49_50  // "SNIP" in hex
+    private let excludedBundleIDsKey = "TextFlashExcludedBundleIDs"
+
+    public var isPaused: Bool {
+        !isRunning
+    }
+
+    public var excludedBundleIDs: Set<String> {
+        get {
+            Set(UserDefaults.standard.stringArray(forKey: excludedBundleIDsKey) ?? [])
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue).sorted(), forKey: excludedBundleIDsKey)
+        }
+    }
+
     // MARK: - Public API
 
     /// 启动全局键盘事件监听。返回 false 表示权限不足（静默失败，不弹窗）。
@@ -166,6 +181,30 @@ public final class EventController {
     public func restart() {
         stop()
         start()
+    }
+
+    public func setPaused(_ paused: Bool) {
+        if paused {
+            stop()
+        } else {
+            startWithPrompt()
+        }
+    }
+
+    public func togglePaused() {
+        setPaused(!isPaused)
+    }
+
+    public func toggleExclusionForFocusedApplication() -> FocusedApplicationInfo? {
+        guard let app = focusedApplicationInfo() else { return nil }
+        var exclusions = excludedBundleIDs
+        if exclusions.contains(app.bundleID) {
+            exclusions.remove(app.bundleID)
+        } else {
+            exclusions.insert(app.bundleID)
+        }
+        excludedBundleIDs = exclusions
+        return app
     }
 
     /// 添加一条文本缩写
@@ -299,6 +338,10 @@ public final class EventController {
     /// must be suppressed because TextFlash will re-inject the trigger itself.
     private func processKeyboardEvent(_ event: CGEvent) -> Bool {
         guard !isInjecting else { return false }
+        guard !isFocusedApplicationExcluded() else {
+            inputBuffer = ""
+            return false
+        }
 
         // 过滤修饰键组合（Cmd/Ctrl 快捷键不触发展开）
         let flags = event.flags
@@ -538,4 +581,34 @@ public final class EventController {
 
         return false
     }
+
+    private func isFocusedApplicationExcluded() -> Bool {
+        guard let app = focusedApplicationInfo() else { return false }
+        return excludedBundleIDs.contains(app.bundleID)
+    }
+
+    public func focusedApplicationInfo() -> FocusedApplicationInfo? {
+        let systemWide = AXUIElementCreateSystemWide()
+        var focusedApp: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            systemWide, kAXFocusedApplicationAttribute as CFString, &focusedApp
+        ) == .success else { return nil }
+        guard let app = focusedApp else { return nil }
+
+        var pidValue: pid_t = 0
+        guard AXUIElementGetPid((app as! AXUIElement), &pidValue) == .success,
+              let runningApp = NSRunningApplication(processIdentifier: pidValue),
+              let bundleID = runningApp.bundleIdentifier
+        else { return nil }
+
+        return FocusedApplicationInfo(
+            bundleID: bundleID,
+            localizedName: runningApp.localizedName ?? bundleID
+        )
+    }
+}
+
+public struct FocusedApplicationInfo {
+    public let bundleID: String
+    public let localizedName: String
 }
