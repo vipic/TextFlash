@@ -175,7 +175,8 @@ final class DatabaseManager {
         return result
     }
 
-    func insertGroup(id: UUID, name: String, sortOrder: Int) {
+    @discardableResult
+    func insertGroup(id: UUID, name: String, sortOrder: Int) -> Bool {
         executeParam("INSERT INTO groups (id, name, sort_order) VALUES (?, ?, ?);") { s in
             sqlite3_bind_text(s, 1, id.uuidString, -1, SQLITE_TRANSIENT)
             sqlite3_bind_text(s, 2, name, -1, SQLITE_TRANSIENT)
@@ -183,14 +184,16 @@ final class DatabaseManager {
         }
     }
 
-    func updateGroupName(id: UUID, name: String) {
+    @discardableResult
+    func updateGroupName(id: UUID, name: String) -> Bool {
         executeParam("UPDATE groups SET name = ? WHERE id = ?;") { s in
             sqlite3_bind_text(s, 1, name, -1, SQLITE_TRANSIENT)
             sqlite3_bind_text(s, 2, id.uuidString, -1, SQLITE_TRANSIENT)
         }
     }
 
-    func updateGroupSortOrders(_ orders: [(UUID, Int)]) {
+    @discardableResult
+    func updateGroupSortOrders(_ orders: [(UUID, Int)]) -> Bool {
         transaction {
             for (id, order) in orders {
                 guard executeParam("UPDATE groups SET sort_order = ? WHERE id = ?;", bind: { s in
@@ -202,7 +205,8 @@ final class DatabaseManager {
         }
     }
 
-    func deleteGroup(id: UUID) {
+    @discardableResult
+    func deleteGroup(id: UUID) -> Bool {
         executeParam("DELETE FROM groups WHERE id = ?;") { s in
             sqlite3_bind_text(s, 1, id.uuidString, -1, SQLITE_TRANSIENT)
         }
@@ -271,7 +275,8 @@ final class DatabaseManager {
         }
     }
 
-    func insertSnippet(id: UUID, groupID: UUID, abbreviation: String, expandedText: String, description: String, sortOrder: Int) {
+    @discardableResult
+    func insertSnippet(id: UUID, groupID: UUID, abbreviation: String, expandedText: String, description: String, sortOrder: Int) -> Bool {
         executeParam("""
             INSERT INTO snippets (id, group_id, abbreviation, expanded_text, description, sort_order, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now'));
@@ -285,7 +290,8 @@ final class DatabaseManager {
         }
     }
 
-    func updateSnippet(id: UUID, abbreviation: String, expandedText: String, description: String) {
+    @discardableResult
+    func updateSnippet(id: UUID, abbreviation: String, expandedText: String, description: String) -> Bool {
         executeParam("""
             UPDATE snippets SET abbreviation = ?, expanded_text = ?, description = ?, updated_at = strftime('%s', 'now')
             WHERE id = ?;
@@ -297,7 +303,8 @@ final class DatabaseManager {
         }
     }
 
-    func updateSnippetSortOrders(_ orders: [(UUID, Int)]) {
+    @discardableResult
+    func updateSnippetSortOrders(_ orders: [(UUID, Int)]) -> Bool {
         transaction {
             for (id, order) in orders {
                 guard executeParam("UPDATE snippets SET sort_order = ?, updated_at = strftime('%s', 'now') WHERE id = ?;", bind: { s in
@@ -309,13 +316,15 @@ final class DatabaseManager {
         }
     }
 
-    func deleteSnippet(id: UUID) {
+    @discardableResult
+    func deleteSnippet(id: UUID) -> Bool {
         executeParam("DELETE FROM snippets WHERE id = ?;") { s in
             sqlite3_bind_text(s, 1, id.uuidString, -1, SQLITE_TRANSIENT)
         }
     }
 
-    func deleteSnippets(ids: Set<UUID>) {
+    @discardableResult
+    func deleteSnippets(ids: Set<UUID>) -> Bool {
         transaction {
             for id in ids {
                 guard executeParam("DELETE FROM snippets WHERE id = ?;", bind: { s in
@@ -326,7 +335,8 @@ final class DatabaseManager {
         }
     }
 
-    func moveSnippet(id: UUID, toGroup groupID: UUID, sortOrder: Int) {
+    @discardableResult
+    func moveSnippet(id: UUID, toGroup groupID: UUID, sortOrder: Int) -> Bool {
         executeParam("UPDATE snippets SET group_id = ?, sort_order = ?, updated_at = strftime('%s', 'now') WHERE id = ?;") { s in
             sqlite3_bind_text(s, 1, groupID.uuidString, -1, SQLITE_TRANSIENT)
             sqlite3_bind_int(s, 2, Int32(sortOrder))

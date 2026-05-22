@@ -68,6 +68,17 @@ final class SnippetManager: ObservableObject {
         case existing(Snippet)
     }
 
+    enum OperationError: LocalizedError {
+        case databaseWriteFailed
+
+        var errorDescription: String? {
+            switch self {
+            case .databaseWriteFailed:
+                return "数据库写入失败"
+            }
+        }
+    }
+
     // MARK: 计算属性
 
     var selectedGroup: SnippetGroup? {
@@ -94,7 +105,7 @@ final class SnippetManager: ObservableObject {
     func addGroup(name: String) {
         let group = SnippetGroup(name: name)
         let sortOrder = groups.count
-        db.insertGroup(id: group.id, name: name, sortOrder: sortOrder)
+        guard db.insertGroup(id: group.id, name: name, sortOrder: sortOrder) else { return }
         groups.append(group)
         selectedGroupID = group.id
         notify()
@@ -102,13 +113,13 @@ final class SnippetManager: ObservableObject {
 
     func renameGroup(_ group: SnippetGroup, to name: String) {
         guard let idx = groups.firstIndex(where: { $0.id == group.id }) else { return }
-        db.updateGroupName(id: group.id, name: name)
+        guard db.updateGroupName(id: group.id, name: name) else { return }
         groups[idx].name = name
         notify()
     }
 
     func deleteGroup(_ group: SnippetGroup) {
-        db.deleteGroup(id: group.id)
+        guard db.deleteGroup(id: group.id) else { return }
         groups.removeAll { $0.id == group.id }
         if selectedGroupID == group.id {
             selectedGroupID = groups.first?.id
@@ -117,9 +128,11 @@ final class SnippetManager: ObservableObject {
     }
 
     func moveGroup(from source: IndexSet, to destination: Int) {
-        groups.move(fromOffsets: source, toOffset: destination)
-        let orders = groups.enumerated().map { ($0.element.id, $0.offset) }
-        db.updateGroupSortOrders(orders)
+        var reordered = groups
+        reordered.move(fromOffsets: source, toOffset: destination)
+        let orders = reordered.enumerated().map { ($0.element.id, $0.offset) }
+        guard db.updateGroupSortOrders(orders) else { return }
+        groups = reordered
         notify()
     }
 
@@ -133,14 +146,14 @@ final class SnippetManager: ObservableObject {
             description: description
         )
         let sortOrder = groups[idx].snippets.count
-        db.insertSnippet(
+        guard db.insertSnippet(
             id: snippet.id,
             groupID: groupID,
             abbreviation: abbreviation,
             expandedText: expandedText,
             description: description,
             sortOrder: sortOrder
-        )
+        ) else { return }
         groups[idx].snippets.append(snippet)
         selectedSnippetID = snippet.id
         notify()
@@ -150,7 +163,7 @@ final class SnippetManager: ObservableObject {
         guard let gIdx = groups.firstIndex(where: { $0.id == groupID }),
               let sIdx = groups[gIdx].snippets.firstIndex(where: { $0.id == snippet.id })
         else { return }
-        db.updateSnippet(id: snippet.id, abbreviation: abbreviation, expandedText: expandedText, description: description)
+        guard db.updateSnippet(id: snippet.id, abbreviation: abbreviation, expandedText: expandedText, description: description) else { return }
         groups[gIdx].snippets[sIdx].abbreviation = abbreviation
         groups[gIdx].snippets[sIdx].expandedText = expandedText
         groups[gIdx].snippets[sIdx].description = description
@@ -159,7 +172,7 @@ final class SnippetManager: ObservableObject {
 
     func deleteSnippet(_ snippet: Snippet, fromGroup groupID: UUID) {
         guard let gIdx = groups.firstIndex(where: { $0.id == groupID }) else { return }
-        db.deleteSnippet(id: snippet.id)
+        guard db.deleteSnippet(id: snippet.id) else { return }
         groups[gIdx].snippets.removeAll { $0.id == snippet.id }
         if selectedSnippetID == snippet.id {
             selectedSnippetID = nil
@@ -170,7 +183,7 @@ final class SnippetManager: ObservableObject {
     func deleteSnippets(_ snippets: Set<Snippet>, fromGroup groupID: UUID) {
         guard let gIdx = groups.firstIndex(where: { $0.id == groupID }) else { return }
         let ids = Set(snippets.map { $0.id })
-        db.deleteSnippets(ids: ids)
+        guard db.deleteSnippets(ids: ids) else { return }
         groups[gIdx].snippets.removeAll { ids.contains($0.id) }
         if let sel = selectedSnippetID, ids.contains(sel) {
             selectedSnippetID = nil
@@ -180,9 +193,11 @@ final class SnippetManager: ObservableObject {
 
     func moveSnippet(from source: IndexSet, to destination: Int, inGroup groupID: UUID) {
         guard let gIdx = groups.firstIndex(where: { $0.id == groupID }) else { return }
-        groups[gIdx].snippets.move(fromOffsets: source, toOffset: destination)
-        let orders = groups[gIdx].snippets.enumerated().map { ($0.element.id, $0.offset) }
-        db.updateSnippetSortOrders(orders)
+        var reordered = groups[gIdx].snippets
+        reordered.move(fromOffsets: source, toOffset: destination)
+        let orders = reordered.enumerated().map { ($0.element.id, $0.offset) }
+        guard db.updateSnippetSortOrders(orders) else { return }
+        groups[gIdx].snippets = reordered
         notify()
     }
 
@@ -190,7 +205,7 @@ final class SnippetManager: ObservableObject {
         guard let srcIdx = groups.firstIndex(where: { $0.id == sourceGroupID }),
               let tgtIdx = groups.firstIndex(where: { $0.id == targetGroupID })
         else { return }
-        db.moveSnippet(id: snippet.id, toGroup: targetGroupID, sortOrder: groups[tgtIdx].snippets.count)
+        guard db.moveSnippet(id: snippet.id, toGroup: targetGroupID, sortOrder: groups[tgtIdx].snippets.count) else { return }
         groups[srcIdx].snippets.removeAll { $0.id == snippet.id }
         groups[tgtIdx].snippets.append(snippet)
         if selectedGroupID == sourceGroupID {
@@ -225,6 +240,7 @@ final class SnippetManager: ObservableObject {
     }
 
     func replaceAllGroups(_ normalizedGroups: [SnippetGroup]) throws {
+        try writeAutomaticBackup()
         guard db.replaceAllGroups(normalizedGroups) else {
             throw SnippetImportExportError.databaseWriteFailed
         }
@@ -251,7 +267,7 @@ final class SnippetManager: ObservableObject {
 
     private func createDefaultGroup() {
         let group = SnippetGroup(name: "通用")
-        db.insertGroup(id: group.id, name: "通用", sortOrder: 0)
+        guard db.insertGroup(id: group.id, name: "通用", sortOrder: 0) else { return }
         groups.append(group)
         selectedGroupID = group.id
         notify()
@@ -285,6 +301,24 @@ final class SnippetManager: ObservableObject {
                 seenAbbreviations.insert(abbreviation)
             }
         }
+    }
+
+    private func writeAutomaticBackup() throws {
+        guard !groups.isEmpty else { return }
+        guard let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else { return }
+
+        let backupDir = appSupport
+            .appendingPathComponent("TextFlash")
+            .appendingPathComponent("Backups")
+        try FileManager.default.createDirectory(at: backupDir, withIntermediateDirectories: true)
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let filename = "TextFlash-AutoBackup-\(formatter.string(from: Date())).json"
+        try exportJSONData().write(to: backupDir.appendingPathComponent(filename), options: .atomic)
     }
 }
 
