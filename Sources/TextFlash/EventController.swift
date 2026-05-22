@@ -84,7 +84,10 @@ public final class EventController {
         guard checkPermission() else {
             return false
         }
-        setupEventTap()
+        guard setupEventTap() else {
+            isRunning = false
+            return false
+        }
         isRunning = true
         return true
     }
@@ -208,7 +211,8 @@ public final class EventController {
 
     // MARK: - Event Tap Setup
 
-    private func setupEventTap() {
+    @discardableResult
+    private func setupEventTap() -> Bool {
         let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
 
         // 使用未管理指针传递 self，回调中还原
@@ -230,7 +234,7 @@ public final class EventController {
             DispatchQueue.main.async { [weak self] in
                 self?.requestPermission()
             }
-            return
+            return false
         }
 
         eventTap = tap
@@ -241,6 +245,7 @@ public final class EventController {
 
         // 启用 tap
         CGEvent.tapEnable(tap: tap, enable: true)
+        return true
     }
 
     // MARK: - Keyboard Event Handler
