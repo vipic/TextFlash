@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var snippetWindow: NSWindow?
     private var debugWindow: NSWindow?
+    private var exclusionsWindow: NSWindow?
     private var pauseMenuItem: NSMenuItem?
     private var permissionMenuItem: NSMenuItem?
     private var exclusionMenuItem: NSMenuItem?
@@ -58,6 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let exclusionItem = NSMenuItem(title: "排除当前应用", action: #selector(toggleFocusedAppExclusion), keyEquivalent: "")
         menu.addItem(exclusionItem)
         exclusionMenuItem = exclusionItem
+        menu.addItem(NSMenuItem(title: "管理排除列表…", action: #selector(openExclusionsWindow), keyEquivalent: ""))
 
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "调试面板…", action: #selector(openDebugWindow), keyEquivalent: ""))
@@ -149,6 +151,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateMenuState(focusedApp: app)
     }
 
+    @MainActor @objc private func openExclusionsWindow() {
+        if let existing = exclusionsWindow {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let hostingView = NSHostingView(rootView: ExclusionsView())
+        hostingView.frame = NSRect(x: 0, y: 0, width: 420, height: 320)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 320),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "TextFlash — 排除列表"
+        window.isReleasedWhenClosed = false
+        window.contentView = hostingView
+        window.center()
+        window.setFrameAutosaveName("TextFlashExclusionsWindow")
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.exclusionsWindow = nil
+            }
+        }
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        exclusionsWindow = window
+    }
+
     @MainActor @objc private func openDebugWindow() {
         if let existing = debugWindow {
             existing.makeKeyAndOrderFront(nil)
@@ -223,6 +262,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 extension AppDelegate: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         updateMenuState()
+    }
+}
+
+struct ExclusionsView: View {
+    @State private var excludedBundleIDs = Array(EventController.shared.excludedBundleIDs).sorted()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("排除列表")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding()
+
+            Divider()
+
+            if excludedBundleIDs.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 28))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("没有被排除的应用")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(excludedBundleIDs, id: \.self) { bundleID in
+                        HStack {
+                            Text(bundleID)
+                                .font(.system(.body, design: .monospaced))
+                                .lineLimit(1)
+                            Spacer()
+                            Button {
+                                remove(bundleID)
+                            } label: {
+                                Image(systemName: "minus.circle")
+                            }
+                            .buttonStyle(.plain)
+                            .help("从排除列表移除")
+                        }
+                    }
+                }
+            }
+        }
+        .frame(minWidth: 420, minHeight: 320)
+    }
+
+    private func remove(_ bundleID: String) {
+        var exclusions = EventController.shared.excludedBundleIDs
+        exclusions.remove(bundleID)
+        EventController.shared.excludedBundleIDs = exclusions
+        excludedBundleIDs = Array(exclusions).sorted()
     }
 }
 
