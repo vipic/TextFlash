@@ -28,7 +28,7 @@ CI runs shell script syntax checks, `swift test`, and `swift build -c release` o
 
 ## Snippets
 
-Snippets are stored in SQLite under Application Support. The manager window supports JSON import and export. Import validates the backup before replacing existing data and writes an automatic backup first.
+Snippets are stored in SQLite under Application Support. The manager window supports JSON import and export. Import accepts TextFlash backup JSON, a raw group array, or a single group object. Import validates the backup before replacing existing data and writes an automatic backup first.
 
 Automatic import backups are stored in:
 

@@ -8,6 +8,7 @@
 - Added pause/resume controls with menu bar status feedback.
 - Re-enable the keyboard event tap automatically when macOS disables it.
 - Added JSON import/export, import validation, overwrite confirmation, and automatic pre-import backups.
+- Accept wrapped backups, raw group arrays, and single-group JSON when importing snippets.
 - Added a manager toolbar action to open the automatic backup directory.
 - Added transaction-backed database updates and surfaced write failures in the manager UI.
 - Added exclusion-list management, including add current app, remove, and clear actions.

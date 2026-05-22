@@ -264,8 +264,7 @@ final class SnippetManager: ObservableObject {
     }
 
     func parseImportJSONData(_ data: Data) throws -> [SnippetGroup] {
-        let backup = try JSONDecoder().decode(SnippetBackup.self, from: data)
-        return try SnippetBackupValidator.normalizedGroups(from: backup)
+        try SnippetBackupValidator.decodeImportData(data)
     }
 
     func replaceAllGroups(_ normalizedGroups: [SnippetGroup]) throws {
@@ -365,6 +364,24 @@ struct SnippetBackup: Codable {
 }
 
 enum SnippetBackupValidator {
+    static func decodeImportData(_ data: Data, decoder: JSONDecoder = JSONDecoder()) throws -> [SnippetGroup] {
+        if let backup = try? decoder.decode(SnippetBackup.self, from: data) {
+            return try normalizedGroups(from: backup)
+        }
+
+        if let groups = try? decoder.decode([SnippetGroup].self, from: data) {
+            try validate(groups)
+            return groups
+        }
+
+        if let group = try? decoder.decode(SnippetGroup.self, from: data) {
+            try validate([group])
+            return [group]
+        }
+
+        throw SnippetImportExportError.invalidBackup("无法识别的 JSON 格式")
+    }
+
     static func normalizedGroups(from backup: SnippetBackup) throws -> [SnippetGroup] {
         let groups = backup.groups.isEmpty ? [SnippetGroup(name: "通用")] : backup.groups
         try validate(groups)

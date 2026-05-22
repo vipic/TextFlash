@@ -1,5 +1,54 @@
+import Foundation
 import Testing
 @testable import TextFlash
+
+@Test func backupValidatorDecodesWrappedBackup() throws {
+    let groups = [
+        SnippetGroup(
+            name: "Work",
+            snippets: [Snippet(abbreviation: "sig", expandedText: "Regards", description: "")]
+        )
+    ]
+    let data = try JSONEncoder().encode(SnippetBackup(groups: groups))
+
+    let decoded = try SnippetBackupValidator.decodeImportData(data)
+
+    #expect(decoded == groups)
+}
+
+@Test func backupValidatorDecodesRawGroupArray() throws {
+    let groups = [
+        SnippetGroup(
+            name: "Work",
+            snippets: [Snippet(abbreviation: "addr", expandedText: "Office", description: "")]
+        )
+    ]
+    let data = try JSONEncoder().encode(groups)
+
+    let decoded = try SnippetBackupValidator.decodeImportData(data)
+
+    #expect(decoded == groups)
+}
+
+@Test func backupValidatorDecodesSingleGroup() throws {
+    let group = SnippetGroup(
+        name: "Personal",
+        snippets: [Snippet(abbreviation: "home", expandedText: "Home address", description: "")]
+    )
+    let data = try JSONEncoder().encode(group)
+
+    let decoded = try SnippetBackupValidator.decodeImportData(data)
+
+    #expect(decoded == [group])
+}
+
+@Test func backupValidatorRejectsUnknownJSONShape() {
+    let data = Data(#"{"items":[]}"#.utf8)
+
+    #expect(throws: SnippetImportExportError.self) {
+        try SnippetBackupValidator.decodeImportData(data)
+    }
+}
 
 @Test func backupValidatorCreatesDefaultGroupForEmptyBackup() throws {
     let groups = try SnippetBackupValidator.normalizedGroups(from: SnippetBackup(groups: []))
