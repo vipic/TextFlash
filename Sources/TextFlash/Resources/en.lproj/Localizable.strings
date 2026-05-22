@@ -28,6 +28,10 @@
 "settings.language.title" = "Language";
 "settings.language.subtitle" = "Change the display language for menus, settings, and diagnostics.";
 "settings.language.system" = "System";
+"settings.launch.title" = "Launch at Login";
+"settings.launch.subtitle" = "Start TextFlash automatically after you sign in to macOS.";
+"settings.launch.toggle" = "Open at login";
+"settings.launch.failed.title" = "Cannot Update Launch at Login";
 "settings.permission.title" = "Accessibility Permission";
 "settings.permission.enabled" = "Enabled. Text expansion can monitor keyboard events.";
 "settings.permission.disabled" = "Disabled. Text expansion will not work.";

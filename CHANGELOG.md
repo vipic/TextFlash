@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added a settings window with app language selection and localized menu/settings/debug strings.
+- Added a launch-at-login control backed by macOS ServiceManagement.
 - Localized the snippet manager, snippet editor, permission prompts, and exclusion alerts.
 - Added a replacement timing setting for slower chat inputs that process deletion asynchronously.
 - Refined the debug panel layout and only show its menu entry in debug builds.

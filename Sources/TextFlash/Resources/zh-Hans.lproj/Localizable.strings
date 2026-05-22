@@ -28,6 +28,10 @@
 "settings.language.title" = "语言";
 "settings.language.subtitle" = "切换菜单、设置和诊断界面的显示语言。";
 "settings.language.system" = "跟随系统";
+"settings.launch.title" = "开机启动";
+"settings.launch.subtitle" = "登录 macOS 后自动启动 TextFlash。";
+"settings.launch.toggle" = "登录时打开";
+"settings.launch.failed.title" = "无法更新开机启动";
 "settings.permission.title" = "辅助功能权限";
 "settings.permission.enabled" = "已启用，文本展开可以正常监听键盘事件。";
 "settings.permission.disabled" = "未启用，文本展开不会生效。";

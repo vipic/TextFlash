@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
     @State private var hasAccessibilityPermission = EventController.shared.checkPermission()
+    @State private var launchAtLogin = LoginItemController.isEnabled
+    @State private var settingsErrorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -12,13 +14,22 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 18) {
                 languageSection
+                launchSection
                 timingSection
                 permissionSection
                 exclusionSection
             }
             .padding(20)
         }
-        .frame(width: 520)
+        .frame(width: 540)
+        .alert(L10n.t("settings.launch.failed.title"), isPresented: Binding(
+            get: { settingsErrorMessage != nil },
+            set: { if !$0 { settingsErrorMessage = nil } }
+        )) {
+            Button(L10n.t("common.confirm"), role: .cancel) { settingsErrorMessage = nil }
+        } message: {
+            Text(settingsErrorMessage ?? "")
+        }
     }
 
     private var header: some View {
@@ -73,6 +84,28 @@ struct SettingsView: View {
             } label: {
                 Label(L10n.t("settings.permission.button"), systemImage: "lock.open")
             }
+        }
+    }
+
+    private var launchSection: some View {
+        SettingsSection(
+            icon: "power",
+            title: L10n.t("settings.launch.title"),
+            subtitle: L10n.t("settings.launch.subtitle")
+        ) {
+            Toggle(L10n.t("settings.launch.toggle"), isOn: Binding(
+                get: { launchAtLogin },
+                set: { enabled in
+                    do {
+                        try LoginItemController.setEnabled(enabled)
+                        launchAtLogin = LoginItemController.isEnabled
+                    } catch {
+                        launchAtLogin = LoginItemController.isEnabled
+                        settingsErrorMessage = error.localizedDescription
+                    }
+                }
+            ))
+            .toggleStyle(.switch)
         }
     }
 
