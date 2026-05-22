@@ -200,6 +200,17 @@ final class SnippetManager: ObservableObject {
         notify()
     }
 
+    func abbreviationExists(_ abbreviation: String, excluding excludedSnippetID: UUID? = nil) -> Bool {
+        let normalized = abbreviation.trimmingCharacters(in: .whitespaces)
+        guard !normalized.isEmpty else { return false }
+
+        return groups.contains { group in
+            group.snippets.contains { snippet in
+                snippet.id != excludedSnippetID && snippet.abbreviation == normalized
+            }
+        }
+    }
+
     // MARK: - 内部方法
 
     /// 从数据库重新加载全部数据

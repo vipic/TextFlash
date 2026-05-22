@@ -9,10 +9,19 @@ struct SnippetManagerView: View {
     @State private var showRenameGroupAlert = false
     @State private var renameTarget: SnippetGroup?
     @State private var hoverAddGroup = false
+    @State private var pendingGroupDeletion: SnippetGroup?
+    @State private var pendingSnippetDeletion: PendingSnippetDeletion?
 
     // MARK: - 配色常量
 
     private let borderSubtle = Color.primary.opacity(0.08)
+
+    private struct PendingSnippetDeletion: Identifiable {
+        let snippet: Snippet
+        let groupID: UUID
+
+        var id: UUID { snippet.id }
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -62,6 +71,34 @@ struct SnippetManagerView: View {
             }
         } message: {
             Text("输入新的分组名称")
+        }
+        .alert("删除分组？", isPresented: Binding(
+            get: { pendingGroupDeletion != nil },
+            set: { if !$0 { pendingGroupDeletion = nil } }
+        )) {
+            Button("取消", role: .cancel) { pendingGroupDeletion = nil }
+            Button("删除", role: .destructive) {
+                if let group = pendingGroupDeletion {
+                    manager.deleteGroup(group)
+                }
+                pendingGroupDeletion = nil
+            }
+        } message: {
+            Text("分组内的所有片段都会被删除，此操作无法撤销。")
+        }
+        .alert("删除片段？", isPresented: Binding(
+            get: { pendingSnippetDeletion != nil },
+            set: { if !$0 { pendingSnippetDeletion = nil } }
+        )) {
+            Button("取消", role: .cancel) { pendingSnippetDeletion = nil }
+            Button("删除", role: .destructive) {
+                if let pending = pendingSnippetDeletion {
+                    manager.deleteSnippet(pending.snippet, fromGroup: pending.groupID)
+                }
+                pendingSnippetDeletion = nil
+            }
+        } message: {
+            Text("这个片段会被永久删除。")
         }
     }
 
@@ -150,7 +187,7 @@ struct SnippetManagerView: View {
         }
         Divider()
         Button("删除", role: .destructive) {
-            manager.deleteGroup(group)
+            pendingGroupDeletion = group
         }
         .disabled(manager.groups.count <= 1)
     }
@@ -231,6 +268,7 @@ struct SnippetManagerView: View {
                 .onMove { source, dest in
                     manager.moveSnippet(from: source, to: dest, inGroup: group.id)
                 }
+                .moveDisabled(!manager.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             .listStyle(.inset)
         }
@@ -270,7 +308,7 @@ struct SnippetManagerView: View {
         }
         Divider()
         Button("删除", role: .destructive) {
-            manager.deleteSnippet(snippet, fromGroup: group.id)
+            pendingSnippetDeletion = PendingSnippetDeletion(snippet: snippet, groupID: group.id)
         }
     }
 
@@ -361,6 +399,7 @@ struct SnippetManagerView: View {
             HStack(spacing: 12) {
                 legendItem(color: .green, label: "{clipboard}")
                 legendItem(color: .orange, label: "{enter}")
+                legendItem(color: .purple, label: "{tab}")
                 legendItem(color: .secondary, label: "{cursor}")
                 legendItem(color: .blue, label: "{datetime:…}")
             }

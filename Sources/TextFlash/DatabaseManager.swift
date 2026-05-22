@@ -110,6 +110,18 @@ final class DatabaseManager {
         return true
     }
 
+    @discardableResult
+    private func transaction(_ body: () -> Bool) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard execute("BEGIN IMMEDIATE TRANSACTION;") else { return false }
+        if body() {
+            return execute("COMMIT;")
+        } else {
+            execute("ROLLBACK;")
+            return false
+        }
+    }
+
     /// 执行参数化 SQL（带闭包绑定参数）
     @discardableResult
     private func executeParam(_ sql: String, bind: (OpaquePointer) -> Void) -> Bool {
@@ -179,11 +191,14 @@ final class DatabaseManager {
     }
 
     func updateGroupSortOrders(_ orders: [(UUID, Int)]) {
-        for (id, order) in orders {
-            executeParam("UPDATE groups SET sort_order = ? WHERE id = ?;") { s in
-                sqlite3_bind_int(s, 1, Int32(order))
-                sqlite3_bind_text(s, 2, id.uuidString, -1, SQLITE_TRANSIENT)
+        transaction {
+            for (id, order) in orders {
+                guard executeParam("UPDATE groups SET sort_order = ? WHERE id = ?;", bind: { s in
+                    sqlite3_bind_int(s, 1, Int32(order))
+                    sqlite3_bind_text(s, 2, id.uuidString, -1, SQLITE_TRANSIENT)
+                }) else { return false }
             }
+            return true
         }
     }
 
@@ -251,11 +266,14 @@ final class DatabaseManager {
     }
 
     func updateSnippetSortOrders(_ orders: [(UUID, Int)]) {
-        for (id, order) in orders {
-            executeParam("UPDATE snippets SET sort_order = ?, updated_at = strftime('%s', 'now') WHERE id = ?;") { s in
-                sqlite3_bind_int(s, 1, Int32(order))
-                sqlite3_bind_text(s, 2, id.uuidString, -1, SQLITE_TRANSIENT)
+        transaction {
+            for (id, order) in orders {
+                guard executeParam("UPDATE snippets SET sort_order = ?, updated_at = strftime('%s', 'now') WHERE id = ?;", bind: { s in
+                    sqlite3_bind_int(s, 1, Int32(order))
+                    sqlite3_bind_text(s, 2, id.uuidString, -1, SQLITE_TRANSIENT)
+                }) else { return false }
             }
+            return true
         }
     }
 
@@ -266,7 +284,14 @@ final class DatabaseManager {
     }
 
     func deleteSnippets(ids: Set<UUID>) {
-        for id in ids { deleteSnippet(id: id) }
+        transaction {
+            for id in ids {
+                guard executeParam("DELETE FROM snippets WHERE id = ?;", bind: { s in
+                    sqlite3_bind_text(s, 1, id.uuidString, -1, SQLITE_TRANSIENT)
+                }) else { return false }
+            }
+            return true
+        }
     }
 
     func moveSnippet(id: UUID, toGroup groupID: UUID, sortOrder: Int) {

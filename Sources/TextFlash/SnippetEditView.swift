@@ -22,6 +22,18 @@ struct SnippetEditView: View {
         return nil
     }
 
+    private var trimmedAbbreviation: String {
+        abbreviation.trimmingCharacters(in: .whitespaces)
+    }
+
+    private var trimmedExpandedText: String {
+        expandedText.trimmingLeadingWhitespaceAndNewlines()
+    }
+
+    private var hasAbbreviationConflict: Bool {
+        manager.abbreviationExists(trimmedAbbreviation, excluding: originalSnippet?.id)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // 标题栏
@@ -65,8 +77,9 @@ struct SnippetEditView: View {
                     save()
                 }
                 .keyboardShortcut(.return, modifiers: .command)
-                .disabled(abbreviation.trimmingCharacters(in: .whitespaces).isEmpty
-                          || expandedText.trimmingLeadingWhitespaceAndNewlines().isEmpty)
+                .disabled(trimmedAbbreviation.isEmpty
+                          || trimmedExpandedText.isEmpty
+                          || hasAbbreviationConflict)
             }
             .padding()
         }
@@ -97,6 +110,11 @@ struct SnippetEditView: View {
             TextField("例如 addr, sig", text: $abbreviation)
                 .textFieldStyle(.roundedBorder)
                 .font(.system(.body, design: .monospaced))
+            if hasAbbreviationConflict {
+                Text("这个缩写已存在，请换一个触发词。")
+                    .font(.caption2)
+                    .foregroundColor(.red)
+            }
         }
     }
 
@@ -112,11 +130,6 @@ struct SnippetEditView: View {
                     VariableButton("剪贴板", raw: "{clipboard}", into: $expandedText)
                     VariableButton("回车", raw: "{enter}", into: $expandedText)
                     VariableButton("Tab",  raw: "{tab}", into: $expandedText)
-                    VariableButton("←",    raw: "{left}", into: $expandedText)
-                    VariableButton("→",    raw: "{right}", into: $expandedText)
-                    VariableButton("↑",    raw: "{up}", into: $expandedText)
-                    VariableButton("↓",    raw: "{down}", into: $expandedText)
-                    VariableButton("粘贴", raw: "{paste}", into: $expandedText)
                 }
             }
         }
@@ -174,12 +187,16 @@ struct SnippetEditView: View {
     }
 
     private func save() {
-        let abbr = abbreviation.trimmingCharacters(in: .whitespaces)
+        let abbr = trimmedAbbreviation
         // 只裁剪前导空白（空格/换行），保留尾部格式
-        let expanded = expandedText.trimmingLeadingWhitespaceAndNewlines()
+        let expanded = trimmedExpandedText
         let desc = description.trimmingCharacters(in: .whitespaces)
 
-        guard !abbr.isEmpty, !expanded.isEmpty, let gid = selectedGroupID else { return }
+        guard !abbr.isEmpty,
+              !expanded.isEmpty,
+              !hasAbbreviationConflict,
+              let gid = selectedGroupID
+        else { return }
 
         switch manager.editMode {
         case .new:
