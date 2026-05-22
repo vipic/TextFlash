@@ -9,7 +9,7 @@ struct Snippet: Identifiable, Codable, Hashable {
 }
 
 /// 片段分组
-struct SnippetGroup: Identifiable, Equatable {
+struct SnippetGroup: Identifiable, Codable, Equatable {
     var id: UUID = UUID()
     var name: String
     var snippets: [Snippet] = []

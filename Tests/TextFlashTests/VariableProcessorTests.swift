@@ -2,6 +2,22 @@ import Foundation
 import Testing
 @testable import TextFlash
 
+@Test func snippetGroupCodableRoundTrip() throws {
+    let group = SnippetGroup(
+        name: "通用",
+        snippets: [
+            Snippet(abbreviation: "sig", expandedText: "Regards", description: "签名")
+        ]
+    )
+
+    let data = try JSONEncoder().encode(group)
+    let decoded = try JSONDecoder().decode(SnippetGroup.self, from: data)
+
+    #expect(decoded.id == group.id)
+    #expect(decoded.name == "通用")
+    #expect(decoded.snippets.first?.abbreviation == "sig")
+}
+
 // MARK: - 固定日期 Provider，用于确定性测试
 private func fixedDate() -> Date {
     let components = DateComponents(

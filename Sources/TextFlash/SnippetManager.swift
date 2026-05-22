@@ -211,6 +211,25 @@ final class SnippetManager: ObservableObject {
         }
     }
 
+    func exportJSONData() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(SnippetBackup(groups: groups))
+    }
+
+    func importJSONData(_ data: Data) throws {
+        let backup = try JSONDecoder().decode(SnippetBackup.self, from: data)
+        let normalizedGroups = backup.groups.isEmpty ? [SnippetGroup(name: "通用")] : backup.groups
+        guard db.replaceAllGroups(normalizedGroups) else {
+            throw SnippetImportExportError.databaseWriteFailed
+        }
+        groups = normalizedGroups
+        selectedGroupID = groups.first?.id
+        selectedSnippetID = nil
+        searchQuery = ""
+        notify()
+    }
+
     // MARK: - 内部方法
 
     /// 从数据库重新加载全部数据
@@ -231,5 +250,20 @@ final class SnippetManager: ObservableObject {
 
     private func notify() {
         NotificationCenter.default.post(name: .textFlashSnippetsDidChange, object: self)
+    }
+}
+
+private struct SnippetBackup: Codable {
+    let groups: [SnippetGroup]
+}
+
+enum SnippetImportExportError: LocalizedError {
+    case databaseWriteFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .databaseWriteFailed:
+            return "写入数据库失败"
+        }
     }
 }

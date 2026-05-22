@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 // MARK: - 主窗口视图（暗色液态玻璃主题）
 
@@ -11,6 +12,7 @@ struct SnippetManagerView: View {
     @State private var hoverAddGroup = false
     @State private var pendingGroupDeletion: SnippetGroup?
     @State private var pendingSnippetDeletion: PendingSnippetDeletion?
+    @State private var importExportError: String?
 
     // MARK: - 配色常量
 
@@ -99,6 +101,14 @@ struct SnippetManagerView: View {
             }
         } message: {
             Text("这个片段会被永久删除。")
+        }
+        .alert("导入导出失败", isPresented: Binding(
+            get: { importExportError != nil },
+            set: { if !$0 { importExportError = nil } }
+        )) {
+            Button("确定", role: .cancel) { importExportError = nil }
+        } message: {
+            Text(importExportError ?? "")
         }
     }
 
@@ -483,6 +493,20 @@ struct SnippetManagerView: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup {
             Button {
+                importSnippets()
+            } label: {
+                Image(systemName: "square.and.arrow.down")
+            }
+            .help("导入片段")
+
+            Button {
+                exportSnippets()
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+            }
+            .help("导出片段")
+
+            Button {
                 if let gid = manager.selectedGroupID {
                     manager.editMode = .new(inGroup: gid)
                 } else if let first = manager.groups.first {
@@ -492,6 +516,35 @@ struct SnippetManagerView: View {
                 Image(systemName: "plus")
             }
             .help("新建片段")
+        }
+    }
+
+    private func exportSnippets() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "TextFlash-Snippets.json"
+        panel.canCreateDirectories = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try manager.exportJSONData().write(to: url, options: .atomic)
+        } catch {
+            importExportError = error.localizedDescription
+        }
+    }
+
+    private func importSnippets() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let data = try Data(contentsOf: url)
+            try manager.importJSONData(data)
+        } catch {
+            importExportError = error.localizedDescription
         }
     }
 }

@@ -208,6 +208,38 @@ final class DatabaseManager {
         }
     }
 
+    @discardableResult
+    func replaceAllGroups(_ groups: [SnippetGroup]) -> Bool {
+        transaction {
+            guard execute("DELETE FROM snippets;"),
+                  execute("DELETE FROM groups;")
+            else { return false }
+
+            for (groupIndex, group) in groups.enumerated() {
+                guard executeParam("INSERT INTO groups (id, name, sort_order) VALUES (?, ?, ?);", bind: { s in
+                    sqlite3_bind_text(s, 1, group.id.uuidString, -1, SQLITE_TRANSIENT)
+                    sqlite3_bind_text(s, 2, group.name, -1, SQLITE_TRANSIENT)
+                    sqlite3_bind_int(s, 3, Int32(groupIndex))
+                }) else { return false }
+
+                for (snippetIndex, snippet) in group.snippets.enumerated() {
+                    guard executeParam("""
+                        INSERT INTO snippets (id, group_id, abbreviation, expanded_text, description, sort_order, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, strftime('%s', 'now'), strftime('%s', 'now'));
+                    """, bind: { s in
+                        sqlite3_bind_text(s, 1, snippet.id.uuidString, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(s, 2, group.id.uuidString, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(s, 3, snippet.abbreviation, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(s, 4, snippet.expandedText, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_text(s, 5, snippet.description, -1, SQLITE_TRANSIENT)
+                        sqlite3_bind_int(s, 6, Int32(snippetIndex))
+                    }) else { return false }
+                }
+            }
+            return true
+        }
+    }
+
     // MARK: - 片段 CRUD
 
     func fetchSnippets(forGroup groupID: UUID) -> [Snippet] {
