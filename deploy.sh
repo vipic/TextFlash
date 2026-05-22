@@ -2,7 +2,7 @@
 # TextFlash Deploy — 开发快速部署
 # 流程：debug 编译 → 签名 → 部署到 ~/Applications/TextFlash Dev.app → 启动
 # TCC 保留：只替换二进制，不变更 bundle 结构/签名，避免辅助功能权限失效
-set -e
+set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="TextFlash"
@@ -10,13 +10,19 @@ BUILD_DIR="$PROJECT_DIR/.build/debug"
 BUNDLE_ID="com.nekutai.textflash.dev"
 # 签名身份从环境变量 CODESIGN_IDENTITY 读取，未配置则 ad-hoc
 IDENTITY="${CODESIGN_IDENTITY:-}"
+STAGING="$PROJECT_DIR/.deploy_staging"
+
+cleanup() {
+    rm -rf "$STAGING"
+}
+trap cleanup EXIT
 
 cd "$PROJECT_DIR"
 
 # ── 1. Debug 编译 ──
 echo "⚡ Deploying $APP_NAME (debug)..."
 echo "Building for debugging..."
-swift build 2>&1 | tail -1
+swift build
 
 BIN="$BUILD_DIR/$APP_NAME"
 test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }
@@ -31,8 +37,6 @@ if [ ! -d "$DEST" ]; then
 elif [ ! -f "$DEST/Contents/Info.plist" ]; then
     NEED_BUNDLE=true
 fi
-
-STAGING="$PROJECT_DIR/.deploy_staging"
 
 if $NEED_BUNDLE; then
     echo "📦 创建新 bundle..."
@@ -112,7 +116,6 @@ if $BIN_CHANGED || $NEED_BUNDLE; then
         pkill -f "$DEST_BIN" 2>/dev/null || true
         rm -rf "$DEST"
         cp -R "$STAGING/$APP_NAME Dev.app" "$DEST"
-        rm -rf "$STAGING"
     else
         # 已有 bundle，只替换二进制
         cp "$BIN" "$DEST_BIN"

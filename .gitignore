@@ -12,6 +12,7 @@ Package.resolved
 *.dSYM
 *.dmg
 .release_staging/
+.deploy_staging/
 
 # ── IDE ──
 .idea/
