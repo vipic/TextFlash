@@ -4,6 +4,7 @@
 
 - Fixed trigger-character expansion so TextFlash no longer leaves partial abbreviations or duplicates trigger characters.
 - Added conservative secure-field handling and application exclusion controls.
+- Show accessibility permission status in the manager and debug windows.
 - Added pause/resume controls with menu bar status feedback.
 - Re-enable the keyboard event tap automatically when macOS disables it.
 - Added JSON import/export, import validation, overwrite confirmation, and automatic pre-import backups.

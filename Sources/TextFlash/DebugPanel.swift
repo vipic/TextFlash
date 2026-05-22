@@ -6,6 +6,7 @@ struct DebugPanel: View {
     @State private var buffer = ""
     @State private var isRunning = false
     @State private var isInjecting = false
+    @State private var hasAccessibilityPermission = false
     @State private var snippetCount = 0
     @State private var exclusionCount = 0
     @State private var tapRecoveryCount = 0
@@ -20,6 +21,7 @@ struct DebugPanel: View {
             // 状态行
             HStack(spacing: 16) {
                 statusBadge(label: "Event Tap", ok: isRunning)
+                statusBadge(label: "辅助功能", ok: hasAccessibilityPermission, okText: "已启用", failText: "未启用")
                 statusBadge(label: "注入中", ok: !isInjecting, okText: "闲置", failText: "注入中")
             }
 
@@ -113,6 +115,7 @@ struct DebugPanel: View {
         buffer = ec.inputBuffer
         isRunning = ec.isRunning
         isInjecting = ec.isInjecting
+        hasAccessibilityPermission = ec.checkPermission()
         exclusionCount = ec.excludedBundleIDs.count
         tapRecoveryCount = ec.tapRecoveryCount
 

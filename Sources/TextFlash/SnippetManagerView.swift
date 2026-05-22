@@ -5,6 +5,7 @@ import AppKit
 
 struct SnippetManagerView: View {
     @ObservedObject var manager: SnippetManager
+    @State private var hasAccessibilityPermission = EventController.shared.checkPermission()
     @State private var groupNameInput: String = ""
     @State private var showNewGroupAlert = false
     @State private var showRenameGroupAlert = false
@@ -234,6 +235,8 @@ struct SnippetManagerView: View {
     @ViewBuilder
     private var snippetContent: some View {
         VStack(spacing: 0) {
+            permissionBanner
+
             // 搜索栏
             searchBar
                 .padding(.horizontal, 16)
@@ -248,6 +251,31 @@ struct SnippetManagerView: View {
                 snippetListArea(group: group)
             } else {
                 emptyState
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var permissionBanner: some View {
+        if !hasAccessibilityPermission {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundColor(.orange)
+                Text("辅助功能权限未启用，文本展开不会生效。")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("打开系统设置") {
+                    EventController.shared.requestPermission()
+                    hasAccessibilityPermission = EventController.shared.checkPermission()
+                }
+                .font(.system(size: 12))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color.orange.opacity(0.08))
+            .overlay(alignment: .bottom) {
+                Divider().overlay(borderSubtle)
             }
         }
     }
