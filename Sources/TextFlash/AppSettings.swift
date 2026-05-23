@@ -62,16 +62,23 @@ final class AppSettings: ObservableObject {
 }
 
 enum L10n {
-    static func t(_ key: String) -> String {
-        let language = MainActor.assumeIsolated {
-            AppSettings.shared.language
-        }
+    /// 直接读 UserDefaults，避免 MainActor 依赖，非主线程也能安全调用
+    private static var currentLanguageCode: String? {
+        let raw = UserDefaults.standard.string(forKey: "TextFlashAppLanguage")
+        return raw.flatMap(AppLanguage.init(rawValue:))?.localizationCode
+    }
 
+    static func t(_ key: String) -> String {
         let bundle: Bundle
-        if let code = language.localizationCode,
-           let path = Bundle.module.path(forResource: code, ofType: "lproj"),
-           let localizedBundle = Bundle(path: path) {
-            bundle = localizedBundle
+        if let code = currentLanguageCode,
+           let resourcePath = Bundle.module.resourcePath {
+            // .lproj 是目录，不能用 path(forResource:ofType:)（只查文件）
+            let lproj = (resourcePath as NSString).appendingPathComponent("\(code).lproj")
+            if let localizedBundle = Bundle(path: lproj) {
+                bundle = localizedBundle
+            } else {
+                bundle = .module
+            }
         } else {
             bundle = .module
         }

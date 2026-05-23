@@ -134,3 +134,8 @@
 "debug.abbreviations" = "缩写表";
 "debug.eventLog" = "事件日志";
 "debug.noLog" = "暂无日志";
+
+"about.title" = "关于 TextFlash";
+"about.version" = "版本 %@ (%@)";
+"about.description" = "轻量级 macOS 菜单栏文本展开工具。定义缩写，在任何输入位置自动展开为完整文本。";
+"about.credits" = "基于 SwiftUI 构建 · SQLite 存储 · Accessibility API";

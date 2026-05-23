@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var debugWindow: NSWindow?
 #endif
     private var exclusionsWindow: NSWindow?
+    private var aboutWindow: NSWindow?
     private var pauseMenuItem: NSMenuItem?
     private var permissionMenuItem: NSMenuItem?
     private var exclusionMenuItem: NSMenuItem?
@@ -176,9 +177,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow = window
     }
 
-    @objc private func showAbout() {
-        NSApp.orderFrontStandardAboutPanel(nil)
+    @MainActor @objc private func showAbout() {
+        if let existing = aboutWindow {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let hostingView = NSHostingView(rootView: AboutView())
+        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 300)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 300),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.t("about.title")
+        window.isReleasedWhenClosed = false
+        window.contentView = hostingView
+        window.center()
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.aboutWindow = nil
+            }
+        }
+
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        aboutWindow = window
     }
 
     @objc private func togglePaused() {
@@ -316,6 +350,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         snippetWindow?.title = L10n.t("window.snippets")
         settingsWindow?.title = L10n.t("window.settings")
         exclusionsWindow?.title = L10n.t("window.exclusions")
+        aboutWindow?.title = L10n.t("about.title")
 #if DEBUG
         debugWindow?.title = L10n.t("window.debug")
 #endif

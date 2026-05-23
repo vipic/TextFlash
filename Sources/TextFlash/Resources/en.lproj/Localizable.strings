@@ -134,3 +134,8 @@
 "debug.abbreviations" = "Abbreviations";
 "debug.eventLog" = "Event Log";
 "debug.noLog" = "No log yet";
+
+"about.title" = "About TextFlash";
+"about.version" = "Version %@ (%@)";
+"about.description" = "A lightweight macOS menu bar text expansion app. Define abbreviations and let TextFlash expand them anywhere you type.";
+"about.credits" = "Built with SwiftUI · SQLite storage · Accessibility API";
