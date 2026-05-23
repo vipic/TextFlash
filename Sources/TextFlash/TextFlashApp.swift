@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupMenuBar()
         loadSnippetsIntoController()
         EventController.shared.start()
+        updateMenuState()  // start() 后才刷新状态栏图标，避免启动瞬间误显暂停图标
 
         // 监听片段变更 → 实时重载匹配表
         NotificationCenter.default.addObserver(
