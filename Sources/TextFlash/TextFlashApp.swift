@@ -379,7 +379,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             systemSymbolName: paused ? "pause.circle" : "text.word.spacing",
             accessibilityDescription: paused ? "TextFlash 已暂停" : "TextFlash"
         )
-        button.contentTintColor = paused ? .secondaryLabelColor : nil
     }
 }
 
