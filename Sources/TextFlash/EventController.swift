@@ -495,9 +495,11 @@ public final class EventController {
             || bundleID.contains("iterm")
             || bundleID.contains("terminal")
             || bundleID.contains("electron")
+            || bundleID.contains("ghostty")
             || name.contains("codex")
             || name.contains("iterm")
             || name.contains("terminal")
+            || name.contains("ghostty")
     }
 
     /// 通过 Unicode 字符串注入文本——绕过键盘布局映射
