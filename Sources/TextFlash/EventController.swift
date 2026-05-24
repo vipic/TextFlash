@@ -491,7 +491,9 @@ public final class EventController {
         guard let app = focusedApplicationInfo() ?? lastNonTextFlashApplication else { return false }
         let bundleID = app.bundleID.lowercased()
         let name = app.localizedName.lowercased()
-        return bundleID.contains("codex")
+
+        // 终端 / Electron / Ghostty 等已知不支持 AXSelectedText 的应用
+        if bundleID.contains("codex")
             || bundleID.contains("iterm")
             || bundleID.contains("terminal")
             || bundleID.contains("electron")
@@ -499,7 +501,51 @@ public final class EventController {
             || name.contains("codex")
             || name.contains("iterm")
             || name.contains("terminal")
-            || name.contains("ghostty")
+            || name.contains("ghostty") {
+            return true
+        }
+
+        // 浏览器：AXSelectedText 写入不可靠（React/框架控制的 input 不响应 AX 值变更）
+        if bundleID == "com.apple.safari"
+            || bundleID == "com.google.chrome"
+            || bundleID == "com.microsoft.edgemac"
+            || bundleID.hasPrefix("org.mozilla.firefox")
+            || bundleID == "com.brave.browser"
+            || bundleID.hasPrefix("company.thebrowser") // Arc
+            || bundleID == "com.operasoftware.opera" {
+            return true
+        }
+
+        // 通用兜底：focused element 在 WebView（AXWebArea）内 → 走 Unicode
+        if isFocusedElementInWebView() {
+            return true
+        }
+
+        return false
+    }
+
+    /// 检查当前 focused element 是否在浏览器 WebView（AXWebArea）内。
+    /// WebView 内的元素通过 AXSelectedText 写入不可靠，应走 Unicode 事件注入。
+    private func isFocusedElementInWebView() -> Bool {
+        guard let element = focusedTextElement() else { return false }
+        var current: AXUIElement? = element
+        for _ in 0..<10 {
+            guard let el = current else { break }
+            var role: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(el, kAXRoleAttribute as CFString, &role) == .success,
+                  let roleStr = role as? String else { break }
+            if roleStr == "AXWebArea" {
+                return true
+            }
+            // 到达 application 层仍未找到 → 不是 WebView
+            if roleStr == "AXApplication" { break }
+            var parent: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(el, kAXParentAttribute as CFString, &parent) == .success,
+                  let parentElement = parent,
+                  CFGetTypeID(parentElement) == AXUIElementGetTypeID() else { break }
+            current = (parentElement as! AXUIElement)
+        }
+        return false
     }
 
     /// 通过 Unicode 字符串注入文本——绕过键盘布局映射
