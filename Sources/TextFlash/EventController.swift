@@ -28,8 +28,8 @@ extension Notification.Name {
 /// 2. `discardMarkedText()` 清除输入法组合缓冲区
 /// 3. 延时 5ms 确保 discard 生效
 /// 4. 发送退格事件删除已输入缩写
-/// 5. 通过 `CGEventPost` + `keyboardSetUnicodeString` 注入展开文本
-/// 6. 注入触发字符，保留后续输入的正常流程
+/// 5. 通过 Accessibility 或 Unicode 事件注入展开文本
+/// 6. 必要时注入触发字符，保留后续输入的正常流程
 public final class EventController {
     // MARK: - Singleton
 
@@ -346,9 +346,10 @@ public final class EventController {
             return false
         }
         let char = Character(scalar)
+        let matchingChar = normalizedMatchingCharacter(char)
 
         // 触发字符检查
-        if triggerCharacters.contains(char) {
+        if triggerCharacters.contains(matchingChar) {
             defer { inputBuffer = "" }
             guard let match = matcher.match(in: inputBuffer) else {
                 return false
@@ -356,23 +357,35 @@ public final class EventController {
             guard !isFocusedElementSecure() else {
                 return false
             }
-            inject(abbreviation: match.abbreviation, expansion: match.expansion, triggerChar: char)
+            inject(
+                abbreviation: match.abbreviation,
+                expansion: match.expansion,
+                triggerChar: char,
+                deletionCount: match.abbreviation.count
+            )
             return true
         }
 
         // 非触发字符 → 一律加入 buffer，Trie 检查即时匹配
-        inputBuffer.append(char)
+        inputBuffer.append(matchingChar)
         guard let match = matcher.match(in: inputBuffer) else {
             inputBuffer = matcher.trimToPossibleSuffix(inputBuffer)
             return false
         }
 
-        // 即时触发时原始按键需要先进入目标应用，然后再回删完整缩写。
-        if !isFocusedElementSecure() {
-            inject(abbreviation: match.abbreviation, expansion: match.expansion, triggerChar: nil)
+        // 即时触发时拦截最后一个按键，只删除已经进入目标应用的前缀。
+        guard !isFocusedElementSecure() else {
+            inputBuffer = ""
+            return false
         }
+        inject(
+            abbreviation: match.abbreviation,
+            expansion: match.expansion,
+            triggerChar: nil,
+            deletionCount: max(0, match.abbreviation.count - 1)
+        )
         inputBuffer = ""
-        return false
+        return true
     }
 
     // MARK: - Trigger Handling
@@ -383,11 +396,16 @@ public final class EventController {
     /// 1. 通过 VariableProcessor 处理变量占位符
     /// 2. discardMarkedText（清除输入法缓冲区）
     /// 3. 延时 5ms（等待 discard 生效）
-    /// 4. 发送退格删除缩写字符
+    /// 4. 发送退格删除已经进入目标应用的缩写字符
     /// 5. 优先通过 Accessibility 写入展开文本
     /// 6. 失败时回退到 Unicode 事件注入
     /// 7. 移动光标到 {cursor} 位置
-    private func inject(abbreviation: String, expansion: String, triggerChar: Character?) {
+    private func inject(
+        abbreviation: String,
+        expansion: String,
+        triggerChar: Character?,
+        deletionCount: Int
+    ) {
         isInjecting = true
 
         // Step 0: 处理变量占位符
@@ -402,7 +420,7 @@ public final class EventController {
             guard let self = self else { return }
 
             // Step 3: 发送退格事件删除缩写（每个字符一个退格）
-            let backspaceCount = abbreviation.count
+            let backspaceCount = deletionCount
             for _ in 0..<backspaceCount {
                 self.postKeyEvent(keyCode: 51, keyDown: true)  // kVK_Delete
                 self.postKeyEvent(keyCode: 51, keyDown: false)
@@ -415,9 +433,11 @@ public final class EventController {
             let deleteSettleDelay = max(20, Int(Double(backspaceCount) * delayPerCharacter))
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(deleteSettleDelay)) { [weak self] in
                 guard let self = self else { return }
-                // Step 4: 写入展开文本。优先走 Accessibility，不触碰系统剪贴板。
+                // Step 4: 写入展开文本。部分 Electron/终端应用会 AX 返回成功但实际未写入，直接走 Unicode 注入。
                 let insertionText = processedText + (triggerChar.map(String.init) ?? "")
-                if !self.replaceFocusedSelection(with: insertionText) {
+                if self.shouldPreferUnicodeInsertionForFocusedApplication() {
+                    self.postUnicodeString(insertionText)
+                } else if !self.replaceFocusedSelection(with: insertionText) {
                     self.postUnicodeString(insertionText)
                 }
 
@@ -450,6 +470,34 @@ public final class EventController {
             kAXSelectedTextAttribute as CFString,
             text as CFTypeRef
         ) == .success
+    }
+
+    private func normalizedMatchingCharacter(_ character: Character) -> Character {
+        switch character {
+        case "，":
+            return ","
+        case "。":
+            return "."
+        case "？":
+            return "?"
+        case "、":
+            return "\\"
+        default:
+            return character
+        }
+    }
+
+    private func shouldPreferUnicodeInsertionForFocusedApplication() -> Bool {
+        guard let app = focusedApplicationInfo() ?? lastNonTextFlashApplication else { return false }
+        let bundleID = app.bundleID.lowercased()
+        let name = app.localizedName.lowercased()
+        return bundleID.contains("codex")
+            || bundleID.contains("iterm")
+            || bundleID.contains("terminal")
+            || bundleID.contains("electron")
+            || name.contains("codex")
+            || name.contains("iterm")
+            || name.contains("terminal")
     }
 
     /// 通过 Unicode 字符串注入文本——绕过键盘布局映射
