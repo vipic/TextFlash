@@ -7,6 +7,7 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="TextFlash"
 BUILD_DIR="$PROJECT_DIR/.build/debug"
+RESOURCE_DIR="$PROJECT_DIR/Sources/TextFlash/Resources"
 BUNDLE_ID="com.nekutai.textflash.dev"
 # 签名身份从环境变量 CODESIGN_IDENTITY 读取，未配置则 ad-hoc
 IDENTITY="${CODESIGN_IDENTITY:-}"
@@ -47,8 +48,8 @@ if $NEED_BUNDLE; then
     mkdir -p "$STAGING/$APP_NAME Dev.app/Contents/Resources"
 
     # 拷贝应用图标
-    if [ -f "$PROJECT_DIR/AppIcon.icns" ]; then
-        cp "$PROJECT_DIR/AppIcon.icns" "$STAGING/$APP_NAME Dev.app/Contents/Resources/AppIcon.icns"
+    if [ -f "$RESOURCE_DIR/Assets/AppIcon.icns" ]; then
+        cp "$RESOURCE_DIR/Assets/AppIcon.icns" "$STAGING/$APP_NAME Dev.app/Contents/Resources/AppIcon.icns"
     fi
     if [ -d "$RESOURCE_BUNDLE" ]; then
         cp -R "$RESOURCE_BUNDLE" "$STAGING/$APP_NAME Dev.app/Contents/Resources/"

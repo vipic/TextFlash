@@ -51,7 +51,6 @@ final class DatabaseManager {
         guard openDatabase() else { return }
         createTables()
         runMigrations()
-        migrateFromJSONIfNeeded()
     }
 
     deinit {
@@ -372,53 +371,4 @@ final class DatabaseManager {
             sqlite3_bind_text(s, 3, id.uuidString, -1, SQLITE_TRANSIENT)
         }
     }
-
-    // MARK: - JSON 迁移
-
-    /// 首次启动时从旧 JSON 文件迁移数据
-    private func migrateFromJSONIfNeeded() {
-        if groupCount() > 0 { return }
-
-        let candidates: [URL] = [
-            FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Documents/Github/TextFlash/data/snippets.json"),
-            FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Documents/Luigi/TextFlash/data/snippets.json"),
-        ]
-
-        for url in candidates {
-            guard FileManager.default.fileExists(atPath: url.path),
-                  let data = try? Data(contentsOf: url),
-                  let store = try? JSONDecoder().decode(LegacyStore.self, from: data),
-                  !store.groups.isEmpty
-            else { continue }
-
-            print("[DatabaseManager] 从 JSON 迁移数据 (\(store.groups.count) 个分组)")
-            for (gi, group) in store.groups.enumerated() {
-                insertGroup(id: group.id, name: group.name, sortOrder: gi)
-                for (si, snippet) in group.snippets.enumerated() {
-                    insertSnippet(
-                        id: snippet.id, groupID: group.id,
-                        abbreviation: snippet.abbreviation,
-                        expandedText: snippet.expandedText,
-                        description: snippet.description, sortOrder: si
-                    )
-                }
-            }
-            print("[DatabaseManager] JSON 迁移完成")
-            return
-        }
-    }
-}
-
-// MARK: - 旧 JSON 格式（仅迁移用）
-
-private struct LegacyStore: Codable {
-    var groups: [LegacyGroup]
-}
-private struct LegacyGroup: Codable {
-    var id: UUID; var name: String; var snippets: [LegacySnippet]
-}
-private struct LegacySnippet: Codable {
-    var id: UUID; var abbreviation: String; var expandedText: String; var description: String
 }

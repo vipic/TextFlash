@@ -52,6 +52,8 @@ CI 会在 macOS 上运行 shell 脚本语法检查、`swift test` 和 `swift bui
 ./release.sh 0.1.0
 ```
 
+发布产物会写入 `dist/`，避免多个版本的 DMG 堆在项目根目录。
+
 默认运行测试。跳过测试仅打包查看：
 
 ```bash

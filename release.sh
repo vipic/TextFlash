@@ -10,6 +10,8 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="TextFlash"
 BUILD_DIR="$PROJECT_DIR/.build/release"
 STAGING="$PROJECT_DIR/.release_staging"
+RESOURCE_DIR="$PROJECT_DIR/Sources/TextFlash/Resources"
+DIST_DIR="$PROJECT_DIR/dist"
 BUNDLE_ID="com.nekutai.textflash"
 VERSION="${1:-0.1.0}"
 VERSION="${VERSION#v}"
@@ -63,13 +65,14 @@ echo "━━━ 3/6 组装 .app bundle ━━━"
 rm -rf "$STAGING"
 mkdir -p "$STAGING/$APP_NAME.app/Contents/MacOS"
 mkdir -p "$STAGING/$APP_NAME.app/Contents/Resources"
+mkdir -p "$DIST_DIR"
 
 STAGED_BIN="$STAGING/$APP_NAME.app/Contents/MacOS/$APP_NAME"
 cp "$BIN" "$STAGED_BIN"
 
 # 拷贝应用图标
-if [ -f "$PROJECT_DIR/AppIcon.icns" ]; then
-    cp "$PROJECT_DIR/AppIcon.icns" "$STAGING/$APP_NAME.app/Contents/Resources/AppIcon.icns"
+if [ -f "$RESOURCE_DIR/Assets/AppIcon.icns" ]; then
+    cp "$RESOURCE_DIR/Assets/AppIcon.icns" "$STAGING/$APP_NAME.app/Contents/Resources/AppIcon.icns"
     echo "   📱 AppIcon.icns → .app bundle"
 fi
 if [ -d "$RESOURCE_BUNDLE" ]; then
@@ -150,7 +153,7 @@ fi
 # ── 6. DMG 打包 ──
 echo ""
 echo "━━━ 6/6 DMG 打包 ━━━"
-DMG_PATH="$PROJECT_DIR/$DMG_NAME"
+DMG_PATH="$DIST_DIR/$DMG_NAME"
 rm -f "$DMG_PATH"
 
 DMG_SRC="$STAGING/dmg_root"
@@ -226,6 +229,7 @@ echo "╔═══════════════════════�
 echo "║  ✅ Release $VERSION 完成              ║"
 echo "╠══════════════════════════════════════╣"
 printf "║  📦 %-32s ║\n" "$DMG_NAME"
+printf "║  📁 %-32s ║\n" "dist/"
 DMG_SIZE=$(stat -f%z "$DMG_PATH" 2>/dev/null || echo 0)
 DMG_MB=$((DMG_SIZE / 1048576))
 printf "║  📏 DMG: %d MB                        ║\n" $DMG_MB
