@@ -23,7 +23,7 @@ cd "$PROJECT_DIR"
 # ── 1. Debug 编译 ──
 echo "⚡ Deploying $APP_NAME (debug)..."
 echo "Building for debugging..."
-swift build
+swift build -Xswiftc -DDISABLE_PREVIEWS
 
 BIN="$BUILD_DIR/$APP_NAME"
 test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }

@@ -62,6 +62,8 @@ struct AboutView: View {
     }
 }
 
+#if !DISABLE_PREVIEWS
 #Preview {
     AboutView()
 }
+#endif

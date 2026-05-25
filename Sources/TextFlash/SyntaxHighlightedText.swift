@@ -202,6 +202,7 @@ struct FlowLayout: Layout {
 
 // MARK: - Preview
 
+#if !DISABLE_PREVIEWS
 #Preview {
     VStack(alignment: .leading, spacing: 20) {
         Text("单行预览:").font(.caption).foregroundColor(.secondary)
@@ -216,3 +217,4 @@ struct FlowLayout: Layout {
     .padding()
     .preferredColorScheme(.dark)
 }
+#endif

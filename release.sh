@@ -19,7 +19,15 @@ BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 IDENTITY="${CODESIGN_IDENTITY:-}"
 NOTARIZE="${NOTARIZE:-false}"
-RUN_TESTS="${RUN_TESTS:-true}"
+# 自动检测：无 Xcode 则跳过测试（XCTest/Testing 框架需要完整 Xcode）
+if [ "${RUN_TESTS:-}" = "" ]; then
+    if xcode-select -p 2>/dev/null | grep -q "/Xcode.app/"; then
+        RUN_TESTS=true
+    else
+        RUN_TESTS=false
+        echo "⚠️  未检测到 Xcode，自动跳过测试（XCTest/Testing 框架需要完整 Xcode）"
+    fi
+fi
 
 cleanup() {
     rm -rf "$STAGING"
@@ -45,7 +53,7 @@ fi
 # ── 1. 测试 ──
 echo "━━━ 1/6 测试 ━━━"
 if [ "$RUN_TESTS" = "true" ]; then
-    swift test
+    swift test -Xswiftc -DDISABLE_PREVIEWS
 else
     echo "   跳过测试（RUN_TESTS=${RUN_TESTS}）"
 fi
@@ -53,7 +61,7 @@ fi
 # ── 2. Release 编译 ──
 echo ""
 echo "━━━ 2/6 Release 编译 ━━━"
-swift build -c release
+swift build -c release -Xswiftc -DDISABLE_PREVIEWS
 
 BIN="$BUILD_DIR/$APP_NAME"
 test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }

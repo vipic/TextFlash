@@ -622,6 +622,8 @@ struct SnippetManagerView: View {
 
 // MARK: - Preview
 
+#if !DISABLE_PREVIEWS
 #Preview {
     SnippetManagerView(manager: SnippetManager())
 }
+#endif

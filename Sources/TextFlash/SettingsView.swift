@@ -180,6 +180,8 @@ private struct SettingsSection<Accessory: View>: View {
     }
 }
 
+#if !DISABLE_PREVIEWS
 #Preview {
     SettingsView()
 }
+#endif
