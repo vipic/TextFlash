@@ -82,7 +82,12 @@ struct SettingsView: View {
                 EventController.shared.requestPermission()
                 hasAccessibilityPermission = EventController.shared.checkPermission()
             } label: {
-                Label(L10n.t("settings.permission.button"), systemImage: "lock.open")
+                Label(
+                    hasAccessibilityPermission
+                        ? L10n.t("settings.permission.authorizedButton")
+                        : L10n.t("settings.permission.button"),
+                    systemImage: hasAccessibilityPermission ? "checkmark.circle" : "lock.open"
+                )
             }
         }
     }

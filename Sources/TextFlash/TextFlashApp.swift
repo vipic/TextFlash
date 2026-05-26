@@ -55,11 +55,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - 菜单栏
 
     private func setupMenuBar() {
-        if let existing = statusItem {
-            NSStatusBar.system.removeStatusItem(existing)
-            statusItem = nil
+        if statusItem == nil {
+            statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         }
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
             button.image = NSImage(
                 systemSymbolName: "text.word.spacing",
@@ -222,15 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func checkAccessibilityPermission() {
-        if EventController.shared.checkPermission() {
-            let alert = NSAlert()
-            alert.messageText = L10n.t("alert.permission.enabled.title")
-            alert.informativeText = L10n.t("alert.permission.enabled.message")
-            alert.alertStyle = .informational
-            alert.runModal()
-        } else {
-            EventController.shared.requestPermission()
-        }
+        EventController.shared.requestPermission()
     }
 
     @objc private func toggleFocusedAppExclusion() {

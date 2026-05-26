@@ -188,12 +188,19 @@ public final class EventController {
 
     /// 请求辅助功能权限——弹出系统授权对话框，或引导用户打开系统设置
     public func requestPermission() {
+        guard !checkPermission() else {
+            showPermissionGrantedAlert()
+            return
+        }
+
         // 只弹一次系统对话框
         let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
         let alreadyTrusted = AXIsProcessTrustedWithOptions(options)
 
-        if !alreadyTrusted, !AXIsProcessTrusted() {
-            // 用户拒绝了系统弹窗 → 引导打开系统设置
+        if alreadyTrusted || AXIsProcessTrusted() {
+            showPermissionGrantedAlert()
+        } else {
+            // 用户拒绝了系统弹窗或系统不再弹窗 → 引导打开系统设置
             DispatchQueue.main.async {
                 let alert = NSAlert()
                 alert.messageText = L10n.t("permission.request.title")
@@ -202,11 +209,32 @@ public final class EventController {
                 alert.addButton(withTitle: L10n.t("permission.request.open"))
                 alert.addButton(withTitle: L10n.t("permission.request.later"))
                 if alert.runModal() == .alertFirstButtonReturn {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                        NSWorkspace.shared.open(url)
-                    }
+                    Self.openAccessibilitySettings()
                 }
             }
+        }
+    }
+
+    public static func openAccessibilitySettings() {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+        ]
+
+        for candidate in candidates {
+            if let url = URL(string: candidate), NSWorkspace.shared.open(url) {
+                return
+            }
+        }
+    }
+
+    private func showPermissionGrantedAlert() {
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = L10n.t("permission.authorized.title")
+            alert.informativeText = L10n.t("alert.permission.enabled.message")
+            alert.alertStyle = .informational
+            alert.runModal()
         }
     }
 

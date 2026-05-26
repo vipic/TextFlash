@@ -20,6 +20,7 @@
 
 "alert.permission.enabled.title" = "辅助功能权限已启用";
 "alert.permission.enabled.message" = "TextFlash 可以监听键盘事件并展开文本。";
+"permission.authorized.title" = "已经授权";
 "alert.focusedApp.missing.title" = "无法识别当前应用";
 "alert.focusedApp.missing.message" = "请切回目标应用后再从菜单栏切换排除状态。";
 
@@ -36,6 +37,7 @@
 "settings.permission.enabled" = "已启用，文本展开可以正常监听键盘事件。";
 "settings.permission.disabled" = "未启用，文本展开不会生效。";
 "settings.permission.button" = "打开权限设置";
+"settings.permission.authorizedButton" = "已经授权";
 "settings.exclusions.title" = "应用排除";
 "settings.exclusions.subtitle" = "排除列表可从菜单栏管理，排除后该应用内不会触发展开。";
 "settings.timing.title" = "替换时序";

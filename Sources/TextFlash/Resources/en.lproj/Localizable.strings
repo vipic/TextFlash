@@ -20,6 +20,7 @@
 
 "alert.permission.enabled.title" = "Accessibility Permission Enabled";
 "alert.permission.enabled.message" = "TextFlash can monitor keyboard events and expand text.";
+"permission.authorized.title" = "Already Authorized";
 "alert.focusedApp.missing.title" = "Cannot Identify Current App";
 "alert.focusedApp.missing.message" = "Switch back to the target app, then toggle exclusion from the menu bar.";
 
@@ -36,6 +37,7 @@
 "settings.permission.enabled" = "Enabled. Text expansion can monitor keyboard events.";
 "settings.permission.disabled" = "Disabled. Text expansion will not work.";
 "settings.permission.button" = "Open Permission Settings";
+"settings.permission.authorizedButton" = "Already Authorized";
 "settings.exclusions.title" = "App Exclusions";
 "settings.exclusions.subtitle" = "Manage exclusions from the menu bar. Excluded apps never trigger expansion.";
 "settings.timing.title" = "Replacement Timing";
