@@ -28,10 +28,12 @@ swift build -Xswiftc -DDISABLE_PREVIEWS
 BIN="$BUILD_DIR/$APP_NAME"
 test -f "$BIN" || { echo "❌ 构建失败"; exit 1; }
 RESOURCE_BUNDLE="$BUILD_DIR/${APP_NAME}_${APP_NAME}.bundle"
+ICON_SRC="$RESOURCE_DIR/Assets/AppIcon.icns"
 
 DEST="$HOME/Applications/$APP_NAME Dev.app"
 DEST_BIN="$DEST/Contents/MacOS/$APP_NAME"
 DEST_RESOURCES="$DEST/Contents/Resources"
+DEST_ICON="$DEST_RESOURCES/AppIcon.icns"
 
 # ── 2. 判断是否需要组装新 bundle ──
 NEED_BUNDLE=false
@@ -96,7 +98,15 @@ if [ -f "$DEST_BIN" ]; then
     fi
 fi
 
-if $BIN_CHANGED || $NEED_BUNDLE; then
+ICON_CHANGED=false
+if [ -f "$ICON_SRC" ]; then
+    if [ ! -f "$DEST_ICON" ] || ! cmp -s "$ICON_SRC" "$DEST_ICON"; then
+        ICON_CHANGED=true
+        echo "🎨 应用图标已变化，将更新 AppIcon.icns"
+    fi
+fi
+
+if $BIN_CHANGED || $ICON_CHANGED || $NEED_BUNDLE; then
     # ── 4. 签名（仅在二进制变化时，保留 TCC）──
     if $NEED_BUNDLE; then
         cp "$BIN" "$STAGING/$APP_NAME Dev.app/Contents/MacOS/$APP_NAME"
@@ -105,6 +115,10 @@ if $BIN_CHANGED || $NEED_BUNDLE; then
         # 直接替换目标 app 内二进制
         pkill -f "$DEST_BIN" 2>/dev/null || true
         sleep 0.3
+        if $ICON_CHANGED; then
+            mkdir -p "$DEST_RESOURCES"
+            cp "$ICON_SRC" "$DEST_ICON"
+        fi
         if [ -d "$RESOURCE_BUNDLE" ]; then
             mkdir -p "$DEST_RESOURCES"
             rm -rf "$DEST_RESOURCES/$(basename "$RESOURCE_BUNDLE")"
