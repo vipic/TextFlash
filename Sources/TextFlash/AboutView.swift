@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AboutView: View {
+    @ObservedObject private var settings = AppSettings.shared
+
     var body: some View {
         VStack(spacing: 0) {
             // 应用图标
@@ -17,9 +19,10 @@ struct AboutView: View {
             Spacer().frame(height: 6)
 
             // 版本信息
-            Text(String(format: L10n.t("about.version"), versionString, buildString))
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
+            HStack(spacing: 10) {
+                versionRow(label: L10n.t("about.version"), value: versionString)
+                versionRow(label: L10n.t("about.build"), value: buildString)
+            }
 
             Spacer().frame(height: 16)
 
@@ -59,6 +62,17 @@ struct AboutView: View {
 
     private var buildString: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
+    }
+
+    private func versionRow(label: String, value: String) -> some View {
+        HStack(spacing: 6) {
+            Text(label)
+                .fontWeight(.medium)
+            Text(value)
+                .monospacedDigit()
+        }
+        .font(.system(size: 12))
+        .foregroundColor(.secondary)
     }
 }
 
