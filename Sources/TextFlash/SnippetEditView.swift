@@ -148,7 +148,7 @@ struct SnippetEditView: View {
                     .foregroundColor(.secondary)
                     .monospacedDigit()
             }
-            TextEditor(text: $expandedText)
+            PlainTextEditor(text: $expandedText)
                 .font(.system(.body, design: .monospaced))
                 .frame(minHeight: 160)
                 .overlay(
@@ -244,5 +244,49 @@ private struct VariableButton: View {
         }
         .buttonStyle(.plain)
         .help(raw)
+    }
+}
+
+// MARK: - 禁用智能引号的文本编辑器
+
+/// 封装 NSTextView，禁用自动引号/破折号替换。
+/// 在展开文本编辑区域使用，确保 `'` / `"` 保持原样不被转为弯引号。
+struct PlainTextEditor: NSViewRepresentable {
+    @Binding var text: String
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSTextView.scrollableTextView()
+        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        textView.delegate = context.coordinator
+        textView.allowsUndo = true
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+        if textView.string != text {
+            textView.string = text
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var text: Binding<String>
+
+        init(text: Binding<String>) {
+            self.text = text
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text.wrappedValue = textView.string
+        }
     }
 }
