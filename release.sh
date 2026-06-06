@@ -4,6 +4,7 @@
 # 用法: ./release.sh [version] [--publish]
 #   ./release.sh 0.1.0              # 仅构建 DMG
 #   ./release.sh 0.1.0 --publish    # 构建 + 推 tag + 创建 GitHub Release
+#   ./release.sh                    # 自动取 git tag，没有则用 0.1.0
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -13,12 +14,25 @@ STAGING="$PROJECT_DIR/.release_staging"
 RESOURCE_DIR="$PROJECT_DIR/Sources/TextFlash/Resources"
 DIST_DIR="$PROJECT_DIR/dist"
 BUNDLE_ID="com.nekutai.textflash"
-VERSION="${1:-0.1.0}"
+IDENTITY="${CODESIGN_IDENTITY:-Nekutai}"
+NOTARIZE="${NOTARIZE:-false}"
+
+PUBLISH=false
+FORCE=false
+VERSION=""
+for arg in "$@"; do
+    case "$arg" in
+        --publish) PUBLISH=true ;;
+        --force) FORCE=true ;;
+        --*) ;;
+        *) VERSION="$arg" ;;
+    esac
+done
+VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || echo '0.1.0')}"
 VERSION="${VERSION#v}"
+TAG="v$VERSION"
 BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
-IDENTITY="${CODESIGN_IDENTITY:-}"
-NOTARIZE="${NOTARIZE:-false}"
 # 自动检测：无 Xcode 则跳过测试（XCTest/Testing 框架需要完整 Xcode）
 if [ "${RUN_TESTS:-}" = "" ]; then
     if xcode-select -p 2>/dev/null | grep -q "/Xcode.app/"; then
@@ -34,19 +48,19 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# 解析 --publish 标志
-PUBLISH=false
-for arg in "$@"; do
-    [[ "$arg" == "--publish" ]] && PUBLISH=true
-done
-
 echo "🏭 Building $APP_NAME $VERSION (release)..."
 echo ""
 
 cd "$PROJECT_DIR"
 
-if $PUBLISH && [ -n "$(git status --porcelain)" ]; then
-    echo "❌ --publish 需要干净的 Git 工作区"
+if [ -n "$(git status --porcelain)" ] && ! $FORCE; then
+    echo "❌ 工作区有未提交改动。请先提交，或使用 --force 明确跳过。"
+    exit 1
+fi
+
+CURRENT_BRANCH=$(git branch --show-current)
+if $PUBLISH && [ "$CURRENT_BRANCH" != "main" ] && ! $FORCE; then
+    echo "❌ 当前分支是 \"$CURRENT_BRANCH\"，发布必须在 main 分支执行。"
     exit 1
 fi
 
@@ -143,18 +157,13 @@ else
 fi
 
 if $CERT_OK; then
-    codesign --force --deep --options runtime --timestamp --sign "$IDENTITY" "$STAGING/$APP_NAME.app" 2>&1
+    codesign --force --deep --sign "$IDENTITY" "$STAGING/$APP_NAME.app" 2>&1
 else
     codesign --force --deep --sign - "$STAGING/$APP_NAME.app" 2>&1
 fi
 
 if $PUBLISH && ! $CERT_OK; then
     echo "❌ --publish 需要有效的 Developer ID 签名证书，不能发布 ad-hoc 签名产物"
-    exit 1
-fi
-
-if $PUBLISH && [ "$NOTARIZE" != "true" ]; then
-    echo "❌ --publish 需要完成 notarization；请设置 NOTARIZE=true 并配置 APPLE_ID、APPLE_TEAM_ID、APP_SPECIFIC_PASSWORD"
     exit 1
 fi
 
@@ -178,7 +187,7 @@ hdiutil create -volname "$APP_NAME" \
     "$DMG_PATH" 2>&1 | tail -1
 
 if $CERT_OK; then
-    codesign --force --timestamp --sign "$IDENTITY" "$DMG_PATH" 2>&1
+    codesign --force --sign "$IDENTITY" "$DMG_PATH" 2>&1
 fi
 
 if [ "$NOTARIZE" = "true" ]; then
@@ -207,8 +216,6 @@ if $PUBLISH; then
         exit 1
     fi
 
-    TAG="$VERSION"
-
     if git rev-parse "$TAG" &>/dev/null 2>&1; then
         echo "   ⚠️  tag $TAG 已存在"
     else
@@ -223,9 +230,19 @@ if $PUBLISH; then
         gh release upload "$TAG" "$DMG_PATH" --clobber
     else
         echo "   📦 创建 Release $TAG..."
+        last_tag=$(git describe --tags --abbrev=0 HEAD~ 2>/dev/null || echo "")
+        if [[ -n "$last_tag" ]]; then
+            changelog=$(git log "${last_tag}..HEAD" --pretty=format:"- %s" --no-merges 2>/dev/null)
+            if [[ -z "$changelog" ]]; then
+                changelog="- $APP_NAME $VERSION 发布"
+            fi
+        else
+            changelog="- $APP_NAME $VERSION 发布"
+        fi
+
         gh release create "$TAG" \
             --title "$APP_NAME $VERSION" \
-            --notes "- $APP_NAME $VERSION 发布" \
+            --notes "$changelog" \
             "$DMG_PATH"
     fi
 

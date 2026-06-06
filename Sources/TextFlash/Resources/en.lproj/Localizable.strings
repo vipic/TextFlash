@@ -10,6 +10,7 @@
 "menu.unexclude.named" = "Stop Excluding %@";
 "menu.exclusions.manage" = "Manage Exclusions…";
 "menu.debug" = "Debug Panel…";
+"menu.checkUpdates" = "Check for Updates…";
 "menu.about" = "About TextFlash";
 "menu.quit" = "Quit TextFlash";
 
@@ -142,3 +143,22 @@
 "about.build" = "Build";
 "about.description" = "A lightweight macOS menu bar text expansion app. Define abbreviations and let TextFlash expand them anywhere you type.";
 "about.credits" = "Built with SwiftUI · SQLite storage · Accessibility API";
+
+"update.title" = "Software Update";
+"update.upToDate" = "TextFlash is up to date";
+"update.available" = "Update Available";
+"update.checking" = "Checking for Updates…";
+"update.failed" = "Update Check Failed";
+"update.current" = "Current";
+"update.latest" = "Latest";
+"update.whatsNew" = "What's New";
+"update.ok" = "OK";
+"update.cancel" = "Cancel";
+"update.updateButton" = "Update";
+"update.downloading" = "Downloading…";
+"update.installingMessage" = "Installing update. TextFlash will restart.";
+"update.lastChecked" = "Last checked: %@";
+"update.justNow" = "just now";
+"update.error.invalidURL" = "Invalid download URL";
+"update.error.insecureURL" = "Download URL must use HTTPS";
+"update.error.downloadFailed" = "Download failed";

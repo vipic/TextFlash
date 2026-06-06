@@ -10,6 +10,7 @@
 "menu.unexclude.named" = "取消排除 %@";
 "menu.exclusions.manage" = "管理排除列表…";
 "menu.debug" = "调试面板…";
+"menu.checkUpdates" = "检查更新…";
 "menu.about" = "关于 TextFlash";
 "menu.quit" = "退出 TextFlash";
 
@@ -142,3 +143,22 @@
 "about.build" = "Build";
 "about.description" = "轻量级 macOS 菜单栏文本展开工具。定义缩写，在任何输入位置自动展开为完整文本。";
 "about.credits" = "基于 SwiftUI 构建 · SQLite 存储 · Accessibility API";
+
+"update.title" = "软件更新";
+"update.upToDate" = "TextFlash 已是最新版本";
+"update.available" = "发现新版本";
+"update.checking" = "正在检查更新…";
+"update.failed" = "更新检查失败";
+"update.current" = "当前";
+"update.latest" = "最新";
+"update.whatsNew" = "更新内容";
+"update.ok" = "确定";
+"update.cancel" = "取消";
+"update.updateButton" = "更新";
+"update.downloading" = "正在下载…";
+"update.installingMessage" = "正在安装更新，TextFlash 将会重启。";
+"update.lastChecked" = "上次检查：%@";
+"update.justNow" = "刚刚";
+"update.error.invalidURL" = "下载链接无效";
+"update.error.insecureURL" = "下载链接必须使用 HTTPS";
+"update.error.downloadFailed" = "下载失败";

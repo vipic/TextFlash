@@ -14,9 +14,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
     private var exclusionsWindow: NSWindow?
     private var aboutWindow: NSWindow?
+    private var updateWindow: NSWindow?
     private var pauseMenuItem: NSMenuItem?
     private var permissionMenuItem: NSMenuItem?
     private var exclusionMenuItem: NSMenuItem?
+    private var updateMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // LSUIElement：隐藏 Dock 图标
@@ -86,6 +88,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: L10n.t("menu.debug"), action: #selector(openDebugWindow), keyEquivalent: ""))
 #endif
         menu.addItem(.separator())
+        let updateItem = NSMenuItem(title: L10n.t("menu.checkUpdates"), action: #selector(showUpdateWindow), keyEquivalent: "")
+        menu.addItem(updateItem)
+        updateMenuItem = updateItem
         menu.addItem(NSMenuItem(title: L10n.t("menu.about"), action: #selector(showAbout), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: L10n.t("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         menu.delegate = self
@@ -212,6 +217,147 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         aboutWindow = window
+    }
+
+    @MainActor @objc private func showUpdateWindow() {
+        if let existing = updateWindow {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let hostingView = NSHostingView(rootView: UpdateView(
+            state: .checking,
+            releaseNotes: nil,
+            currentVersion: nil,
+            latestVersion: nil,
+            onCancel: nil
+        ))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 420, height: 360)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 360),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.t("update.title")
+        window.isReleasedWhenClosed = false
+        window.contentView = hostingView
+        window.center()
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateWindow = nil
+            }
+        }
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        updateWindow = window
+
+        Task { @MainActor in
+            if let result = await UpdateChecker.shared.checkForUpdate(force: true) {
+                let notes = result.releaseNotes
+                hostingView.rootView = UpdateView(
+                    state: .updateAvailable(result: result),
+                    releaseNotes: notes,
+                    currentVersion: result.currentVersion,
+                    latestVersion: result.latestVersion,
+                    onUpdate: { [weak self, weak hostingView, weak window] in
+                        guard let self, let hostingView, let window else { return }
+                        Task { @MainActor in
+                            await self.performUpdateFlow(
+                                result: result,
+                                notes: notes,
+                                currentVersion: result.currentVersion,
+                                latestVersion: result.latestVersion,
+                                hostingView: hostingView,
+                                window: window
+                            )
+                        }
+                    },
+                    onCancel: { [weak window] in
+                        window?.close()
+                    }
+                )
+            } else {
+                hostingView.rootView = UpdateView(
+                    state: .upToDate(
+                        version: currentVersionString,
+                        build: currentBuildString,
+                        lastCheckDate: UpdateChecker.shared.lastCheckDate(),
+                        lastReleaseNotes: UpdateChecker.shared.cachedReleaseNotes()
+                    ),
+                    releaseNotes: UpdateChecker.shared.cachedReleaseNotes(),
+                    currentVersion: nil,
+                    latestVersion: nil,
+                    onCancel: { [weak window] in
+                        window?.close()
+                    }
+                )
+            }
+        }
+    }
+
+    @MainActor
+    private func performUpdateFlow(result: UpdateChecker.UpdateResult,
+                                   notes: String,
+                                   currentVersion: String,
+                                   latestVersion: String,
+                                   hostingView: NSHostingView<UpdateView>,
+                                   window: NSWindow) async {
+        hostingView.rootView = UpdateView(
+            state: .downloading(progress: 0),
+            releaseNotes: notes,
+            currentVersion: currentVersion,
+            latestVersion: latestVersion,
+            onCancel: { [weak window] in
+                window?.close()
+            }
+        )
+
+        do {
+            let tempURL = try await UpdateChecker.shared.downloadBinary(
+                from: result.downloadURL,
+                expectedSize: result.downloadSize,
+                onProgress: { [weak hostingView, notes, currentVersion, latestVersion, weak window] progress in
+                    DispatchQueue.main.async {
+                        hostingView?.rootView = UpdateView(
+                            state: .downloading(progress: progress),
+                            releaseNotes: notes,
+                            currentVersion: currentVersion,
+                            latestVersion: latestVersion,
+                            onCancel: { [weak window] in window?.close() }
+                        )
+                    }
+                }
+            )
+
+            hostingView.rootView = UpdateView(
+                state: .installing,
+                releaseNotes: notes,
+                currentVersion: currentVersion,
+                latestVersion: latestVersion,
+                onCancel: nil
+            )
+
+            try UpdateChecker.shared.applyUpdate(dmgAt: tempURL, expectedVersion: result.latestVersion)
+        } catch {
+            hostingView.rootView = UpdateView(
+                state: .error(error.localizedDescription),
+                releaseNotes: nil,
+                currentVersion: nil,
+                latestVersion: nil,
+                onCancel: { [weak window] in window?.close() }
+            )
+        }
     }
 
     @objc private func togglePaused() {
@@ -342,6 +488,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow?.title = L10n.t("window.settings")
         exclusionsWindow?.title = L10n.t("window.exclusions")
         aboutWindow?.title = L10n.t("about.title")
+        updateWindow?.title = L10n.t("update.title")
 #if DEBUG
         debugWindow?.title = L10n.t("window.debug")
 #endif
@@ -351,6 +498,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = EventController.shared
         pauseMenuItem?.title = controller.isPaused ? L10n.t("menu.resume") : L10n.t("menu.pause")
         permissionMenuItem?.title = controller.checkPermission() ? L10n.t("menu.permission.enabled") : L10n.t("menu.permission.required")
+        updateMenuItem?.isEnabled = !UpdateChecker.shared.isDevBuild
         updateStatusIcon()
 
         if let app = focusedApp ?? controller.exclusionTargetApplication() {
@@ -369,6 +517,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             systemSymbolName: paused ? "pause.circle" : "text.word.spacing",
             accessibilityDescription: paused ? "TextFlash 已暂停" : "TextFlash"
         )
+    }
+
+    private var currentVersionString: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
+    }
+
+    private var currentBuildString: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
     }
 }
 
