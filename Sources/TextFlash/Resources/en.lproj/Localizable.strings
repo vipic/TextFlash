@@ -5,10 +5,6 @@
 "menu.permission.check" = "Check Accessibility Permission";
 "menu.permission.enabled" = "Accessibility: Enabled";
 "menu.permission.required" = "Accessibility: Required";
-"menu.exclude.current" = "Exclude Current App";
-"menu.exclude.named" = "Exclude %@";
-"menu.unexclude.named" = "Stop Excluding %@";
-"menu.exclusions.manage" = "Manage Exclusions…";
 "menu.debug" = "Debug Panel…";
 "menu.checkUpdates" = "Check for Updates…";
 "menu.about" = "About TextFlash";
@@ -40,13 +36,18 @@
 "settings.permission.button" = "Open Permission Settings";
 "settings.permission.authorizedButton" = "Already Authorized";
 "settings.exclusions.title" = "App Exclusions";
-"settings.exclusions.subtitle" = "Manage exclusions from the menu bar. Excluded apps never trigger expansion.";
+"settings.exclusions.subtitle" = "Excluded apps never trigger expansion.";
+"settings.exclusions.manage" = "Manage";
 "settings.timing.title" = "Replacement Timing";
 "settings.timing.subtitle" = "Some chat apps process deletion slowly. Increase this delay if replacements appear shifted.";
 "settings.timing.delay" = "%.0f ms per character";
 "settings.timing.effective" = "A 3-character abbreviation waits about %.0f ms";
+"settings.unicodeApps.title" = "Unicode Injection Apps";
+"settings.unicodeApps.subtitle" = "Apps in this list skip AX writing and use Unicode insertion directly.";
+"settings.unicodeApps.manage" = "Manage";
 
 "exclusions.title" = "Exclusions";
+"exclusions.choose" = "Choose App";
 "exclusions.addCurrent" = "Add Current App";
 "exclusions.clear" = "Clear Exclusions";
 "exclusions.empty" = "No excluded apps";
@@ -54,12 +55,22 @@
 "exclusions.addFailed.title" = "Cannot Add App";
 "exclusions.addFailed.message" = "Switch back to the target app before adding it, or use “Exclude Current App” from the menu bar first.";
 
+"unicodeApps.title" = "Unicode Injection Apps";
+"unicodeApps.choose" = "Choose App";
+"unicodeApps.addCurrent" = "Add Current App";
+"unicodeApps.clear" = "Clear List";
+"unicodeApps.empty" = "No apps are forced to use Unicode insertion";
+"unicodeApps.remove" = "Remove from list";
+"unicodeApps.addFailed.title" = "Cannot Add App";
+"unicodeApps.addFailed.message" = "Switch back to the target app first, or use Choose App.";
+
 "common.cancel" = "Cancel";
 "common.confirm" = "OK";
 "common.delete" = "Delete";
 "common.edit" = "Edit";
 "common.rename" = "Rename";
 "common.save" = "Save";
+"common.done" = "Done";
 
 "permission.request.title" = "Accessibility Permission Required";
 "permission.request.message" = "Text expansion needs Accessibility permission to monitor keyboard events and insert text.\n\nEnable this app in System Settings → Privacy & Security → Accessibility.";

@@ -5,10 +5,6 @@
 "menu.permission.check" = "检查辅助功能权限";
 "menu.permission.enabled" = "辅助功能权限：已启用";
 "menu.permission.required" = "辅助功能权限：需要启用";
-"menu.exclude.current" = "排除当前应用";
-"menu.exclude.named" = "排除 %@";
-"menu.unexclude.named" = "取消排除 %@";
-"menu.exclusions.manage" = "管理排除列表…";
 "menu.debug" = "调试面板…";
 "menu.checkUpdates" = "检查更新…";
 "menu.about" = "关于 TextFlash";
@@ -40,13 +36,18 @@
 "settings.permission.button" = "打开权限设置";
 "settings.permission.authorizedButton" = "已经授权";
 "settings.exclusions.title" = "应用排除";
-"settings.exclusions.subtitle" = "排除列表可从菜单栏管理，排除后该应用内不会触发展开。";
+"settings.exclusions.subtitle" = "排除后该应用内不会触发展开。";
+"settings.exclusions.manage" = "管理";
 "settings.timing.title" = "替换时序";
 "settings.timing.subtitle" = "部分聊天应用处理删除较慢；增加等待时间可减少错位替换。";
 "settings.timing.delay" = "每字符等待 %.0f ms";
 "settings.timing.effective" = "例如 3 字符缩写约等待 %.0f ms";
+"settings.unicodeApps.title" = "Unicode 注入应用";
+"settings.unicodeApps.subtitle" = "列表中的应用会跳过 AX 写入，直接使用 Unicode 注入。";
+"settings.unicodeApps.manage" = "管理";
 
 "exclusions.title" = "排除列表";
+"exclusions.choose" = "选择应用";
 "exclusions.addCurrent" = "添加当前应用";
 "exclusions.clear" = "清空排除列表";
 "exclusions.empty" = "没有被排除的应用";
@@ -54,12 +55,22 @@
 "exclusions.addFailed.title" = "无法添加应用";
 "exclusions.addFailed.message" = "请切回目标应用后再添加，或先从菜单栏使用“排除当前应用”。";
 
+"unicodeApps.title" = "Unicode 注入应用";
+"unicodeApps.choose" = "选择应用";
+"unicodeApps.addCurrent" = "添加当前应用";
+"unicodeApps.clear" = "清空列表";
+"unicodeApps.empty" = "没有强制使用 Unicode 注入的应用";
+"unicodeApps.remove" = "从列表移除";
+"unicodeApps.addFailed.title" = "无法添加应用";
+"unicodeApps.addFailed.message" = "请先切回目标应用，或使用“选择应用”添加。";
+
 "common.cancel" = "取消";
 "common.confirm" = "确定";
 "common.delete" = "删除";
 "common.edit" = "编辑";
 "common.rename" = "重命名";
 "common.save" = "保存";
+"common.done" = "完成";
 
 "permission.request.title" = "需要辅助功能权限";
 "permission.request.message" = "文本展开需要辅助功能权限来监听键盘事件并注入文本。\n\n请在「系统设置 → 隐私与安全性 → 辅助功能」中启用此应用。";

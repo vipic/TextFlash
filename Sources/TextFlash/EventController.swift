@@ -3,6 +3,7 @@ import CoreGraphics
 
 extension Notification.Name {
     static let textFlashExclusionsDidChange = Notification.Name("TextFlashExclusionsDidChange")
+    static let textFlashUnicodeAppsDidChange = Notification.Name("TextFlashUnicodeAppsDidChange")
 }
 
 // MARK: - EventController
@@ -64,6 +65,7 @@ public final class EventController {
     /// 注入时的事件源标记值（防止自触发）
     private static let injectionTag: Int64 = 0x53_4E_49_50  // "SNIP" in hex
     private let excludedBundleIDsKey = "TextFlashExcludedBundleIDs"
+    private let unicodeBundleIDsKey = "TextFlashUnicodeBundleIDs"
 
     public var isPaused: Bool {
         !isRunning
@@ -76,6 +78,16 @@ public final class EventController {
         set {
             UserDefaults.standard.set(Array(newValue).sorted(), forKey: excludedBundleIDsKey)
             NotificationCenter.default.post(name: .textFlashExclusionsDidChange, object: self)
+        }
+    }
+
+    public var unicodeBundleIDs: Set<String> {
+        get {
+            Set(UserDefaults.standard.stringArray(forKey: unicodeBundleIDsKey) ?? [])
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue).sorted(), forKey: unicodeBundleIDsKey)
+            NotificationCenter.default.post(name: .textFlashUnicodeAppsDidChange, object: self)
         }
     }
 
@@ -461,9 +473,11 @@ public final class EventController {
             let deleteSettleDelay = max(20, Int(Double(backspaceCount) * delayPerCharacter))
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(deleteSettleDelay)) { [weak self] in
                 guard let self = self else { return }
-                // Step 4: 写入展开文本。仅当 focused AX 元素看起来支持原生文本替换时才走 AX。
+                // Step 4: 写入展开文本。配置为 Unicode 的应用和 WebView 直接走 Unicode。
                 let insertionText = processedText + (triggerChar.map(String.init) ?? "")
-                if !self.replaceFocusedSelection(with: insertionText) {
+                if self.shouldPreferUnicodeInsertionForFocusedApplication() {
+                    self.postUnicodeString(insertionText)
+                } else if !self.replaceFocusedSelection(with: insertionText) {
                     self.postUnicodeString(insertionText)
                 }
 
@@ -491,7 +505,6 @@ public final class EventController {
     private func replaceFocusedSelection(with text: String) -> Bool {
         guard !text.isEmpty else { return true }
         guard let element = focusedTextElement() else { return false }
-        guard focusedElementSupportsAXTextReplacement(element) else { return false }
         return AXUIElementSetAttributeValue(
             element,
             kAXSelectedTextAttribute as CFString,
@@ -514,35 +527,19 @@ public final class EventController {
         }
     }
 
-    /// 通过 AX 元素能力判断是否适合使用 AXSelectedText。
-    /// WebView、终端、Electron 等复杂编辑器往往会暴露 focused element，但 AXSelectedText 写入不可靠；
-    /// 这些场景交给 Unicode 事件注入，不按应用名单做特殊处理，也不触碰剪贴板。
-    private func focusedElementSupportsAXTextReplacement(_ element: AXUIElement) -> Bool {
-        guard let role = axStringAttribute(element, kAXRoleAttribute as CFString) else {
-            return false
-        }
-        let subrole = axStringAttribute(element, kAXSubroleAttribute as CFString)
-
-        if subrole == "AXSecureTextField" {
-            return false
+    private func shouldPreferUnicodeInsertionForFocusedApplication() -> Bool {
+        if let app = focusedApplicationInfo() ?? lastNonTextFlashApplication,
+           unicodeBundleIDs.contains(app.bundleID) {
+            return true
         }
 
-        let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox"]
-        let isTextRole = textRoles.contains(role) || subrole == "AXSearchField"
-        guard isTextRole else { return false }
-
-        if isElementInWebArea(element) {
-            return false
-        }
-
-        if !isAXAttributeSettable(element, kAXSelectedTextAttribute as CFString) {
-            return false
-        }
-
-        return true
+        return isFocusedElementInWebView()
     }
 
-    private func isElementInWebArea(_ element: AXUIElement) -> Bool {
+    /// 检查当前 focused element 是否在 WebView（AXWebArea）内。
+    /// WebView 内的元素通过 AXSelectedText 写入不可靠，应走 Unicode 事件注入。
+    private func isFocusedElementInWebView() -> Bool {
+        guard let element = focusedTextElement() else { return false }
         var current: AXUIElement? = element
         for _ in 0..<10 {
             guard let el = current else { break }
@@ -566,14 +563,6 @@ public final class EventController {
             return nil
         }
         return value as? String
-    }
-
-    private func isAXAttributeSettable(_ element: AXUIElement, _ attribute: CFString) -> Bool {
-        var settable = DarwinBoolean(false)
-        guard AXUIElementIsAttributeSettable(element, attribute, &settable) == .success else {
-            return false
-        }
-        return settable.boolValue
     }
 
     /// 通过 Unicode 字符串注入文本——绕过键盘布局映射

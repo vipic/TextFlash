@@ -12,12 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #if DEBUG
     private var debugWindow: NSWindow?
 #endif
-    private var exclusionsWindow: NSWindow?
     private var aboutWindow: NSWindow?
     private var updateWindow: NSWindow?
     private var pauseMenuItem: NSMenuItem?
     private var permissionMenuItem: NSMenuItem?
-    private var exclusionMenuItem: NSMenuItem?
     private var updateMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -34,12 +32,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(snippetsDidChange),
             name: .textFlashSnippetsDidChange,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(exclusionsDidChange),
-            name: .textFlashExclusionsDidChange,
             object: nil
         )
         NotificationCenter.default.addObserver(
@@ -77,11 +69,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let permissionItem = NSMenuItem(title: L10n.t("menu.permission.check"), action: #selector(checkAccessibilityPermission), keyEquivalent: "")
         menu.addItem(permissionItem)
         permissionMenuItem = permissionItem
-
-        let exclusionItem = NSMenuItem(title: L10n.t("menu.exclude.current"), action: #selector(toggleFocusedAppExclusion), keyEquivalent: "")
-        menu.addItem(exclusionItem)
-        exclusionMenuItem = exclusionItem
-        menu.addItem(NSMenuItem(title: L10n.t("menu.exclusions.manage"), action: #selector(openExclusionsWindow), keyEquivalent: ""))
 
 #if DEBUG
         menu.addItem(.separator())
@@ -152,10 +139,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let hostingView = NSHostingView(rootView: SettingsView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 540, height: 520)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 540, height: 610)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 610),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -369,56 +356,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         EventController.shared.requestPermission()
     }
 
-    @objc private func toggleFocusedAppExclusion() {
-        guard let app = EventController.shared.toggleExclusionForFocusedApplication() else {
-            let alert = NSAlert()
-            alert.messageText = L10n.t("alert.focusedApp.missing.title")
-            alert.informativeText = L10n.t("alert.focusedApp.missing.message")
-            alert.alertStyle = .warning
-            alert.runModal()
-            return
-        }
-
-        updateMenuState(focusedApp: app)
-    }
-
-    @MainActor @objc private func openExclusionsWindow() {
-        if let existing = exclusionsWindow {
-            existing.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-
-        let hostingView = NSHostingView(rootView: ExclusionsView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 420, height: 320)
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 320),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = L10n.t("window.exclusions")
-        window.isReleasedWhenClosed = false
-        window.contentView = hostingView
-        window.center()
-        window.setFrameAutosaveName("TextFlashExclusionsWindow")
-
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification,
-            object: window,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.exclusionsWindow = nil
-            }
-        }
-
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        exclusionsWindow = window
-    }
-
 #if DEBUG
     @MainActor @objc private func openDebugWindow() {
         if let existing = debugWindow {
@@ -478,15 +415,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         loadSnippetsIntoController()
     }
 
-    @objc private func exclusionsDidChange(_ notification: Notification) {
-        updateMenuState()
-    }
-
     @objc private func languageDidChange(_ notification: Notification) {
         setupMenuBar()
         snippetWindow?.title = L10n.t("window.snippets")
         settingsWindow?.title = L10n.t("window.settings")
-        exclusionsWindow?.title = L10n.t("window.exclusions")
         aboutWindow?.title = L10n.t("about.title")
         updateWindow?.title = L10n.t("update.title")
 #if DEBUG
@@ -494,20 +426,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
     }
 
-    private func updateMenuState(focusedApp: FocusedApplicationInfo? = nil) {
+    private func updateMenuState() {
         let controller = EventController.shared
         pauseMenuItem?.title = controller.isPaused ? L10n.t("menu.resume") : L10n.t("menu.pause")
         permissionMenuItem?.title = controller.checkPermission() ? L10n.t("menu.permission.enabled") : L10n.t("menu.permission.required")
         updateMenuItem?.isEnabled = !UpdateChecker.shared.isDevBuild
         updateStatusIcon()
-
-        if let app = focusedApp ?? controller.exclusionTargetApplication() {
-            let excluded = controller.excludedBundleIDs.contains(app.bundleID)
-            let key = excluded ? "menu.unexclude.named" : "menu.exclude.named"
-            exclusionMenuItem?.title = String(format: L10n.t(key), app.localizedName)
-        } else {
-            exclusionMenuItem?.title = L10n.t("menu.exclude.current")
-        }
     }
 
     private func updateStatusIcon() {
