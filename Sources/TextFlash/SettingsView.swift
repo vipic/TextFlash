@@ -161,6 +161,11 @@ struct SettingsView: View {
             subtitle: L10n.t("settings.unicodeApps.subtitle")
         ) {
             HStack(spacing: 8) {
+                InfoPopoverButton(
+                    title: L10n.t("settings.unicodeApps.info.title"),
+                    message: L10n.t("settings.unicodeApps.info.message")
+                )
+
                 Text("\(unicodeAppsCount)")
                     .font(.system(.body, design: .rounded))
                     .fontWeight(.semibold)
@@ -183,6 +188,11 @@ struct SettingsView: View {
             subtitle: L10n.t("settings.exclusions.subtitle")
         ) {
             HStack(spacing: 8) {
+                InfoPopoverButton(
+                    title: L10n.t("settings.exclusions.info.title"),
+                    message: L10n.t("settings.exclusions.info.message")
+                )
+
                 Text("\(exclusionsCount)")
                     .font(.system(.body, design: .rounded))
                     .fontWeight(.semibold)
@@ -195,6 +205,35 @@ struct SettingsView: View {
                     showExclusions = true
                 }
             }
+        }
+    }
+}
+
+private struct InfoPopoverButton: View {
+    let title: String
+    let message: String
+    @State private var isPresented = false
+
+    var body: some View {
+        Button {
+            isPresented.toggle()
+        } label: {
+            Image(systemName: "info.circle")
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(.secondary)
+        .help(title)
+        .popover(isPresented: $isPresented, arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.headline)
+                Text(message)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(width: 260, alignment: .leading)
+            .padding(14)
         }
     }
 }

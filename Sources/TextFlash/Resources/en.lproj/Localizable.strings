@@ -38,6 +38,8 @@
 "settings.exclusions.title" = "App Exclusions";
 "settings.exclusions.subtitle" = "Excluded apps never trigger expansion.";
 "settings.exclusions.manage" = "Manage";
+"settings.exclusions.info.title" = "Why exclude apps?";
+"settings.exclusions.info.message" = "Some apps are not good targets for automatic expansion, such as games, remote desktops, virtual machines, or tools that handle shortcuts themselves. Excluded apps pause TextFlash triggers to avoid accidental replacements.";
 "settings.timing.title" = "Replacement Timing";
 "settings.timing.subtitle" = "Some chat apps process deletion slowly. Increase this delay if replacements appear shifted.";
 "settings.timing.delay" = "%.0f ms per character";
@@ -45,6 +47,8 @@
 "settings.unicodeApps.title" = "Unicode Injection Apps";
 "settings.unicodeApps.subtitle" = "Apps in this list skip AX writing and use Unicode insertion directly.";
 "settings.unicodeApps.manage" = "Manage";
+"settings.unicodeApps.info.title" = "Why use Unicode injection?";
+"settings.unicodeApps.info.message" = "Some apps accept typed text but do not reliably support Accessibility text writing. Adding them here makes TextFlash simulate Unicode key input instead, which can improve replacement reliability in chat apps, editors, and cross-platform apps.";
 
 "exclusions.title" = "Exclusions";
 "exclusions.choose" = "Choose App";

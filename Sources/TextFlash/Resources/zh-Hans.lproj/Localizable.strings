@@ -38,6 +38,8 @@
 "settings.exclusions.title" = "应用排除";
 "settings.exclusions.subtitle" = "排除后该应用内不会触发展开。";
 "settings.exclusions.manage" = "管理";
+"settings.exclusions.info.title" = "为什么需要应用排除？";
+"settings.exclusions.info.message" = "某些应用不适合自动展开，例如游戏、远程控制、虚拟机或会自己处理快捷输入的工具。加入排除列表后，TextFlash 会在这些应用中暂停触发，避免误替换。";
 "settings.timing.title" = "替换时序";
 "settings.timing.subtitle" = "部分聊天应用处理删除较慢；增加等待时间可减少错位替换。";
 "settings.timing.delay" = "每字符等待 %.0f ms";
@@ -45,6 +47,8 @@
 "settings.unicodeApps.title" = "Unicode 注入应用";
 "settings.unicodeApps.subtitle" = "列表中的应用会跳过 AX 写入，直接使用 Unicode 注入。";
 "settings.unicodeApps.manage" = "管理";
+"settings.unicodeApps.info.title" = "为什么需要 Unicode 注入？";
+"settings.unicodeApps.info.message" = "有些应用虽然能输入文字，但不稳定支持辅助功能文本写入。加入这里后，TextFlash 会改用模拟 Unicode 按键输入，通常能改善聊天、编辑器或跨平台应用里的替换成功率。";
 
 "exclusions.title" = "排除列表";
 "exclusions.choose" = "选择应用";
