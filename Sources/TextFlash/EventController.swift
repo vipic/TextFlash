@@ -36,7 +36,10 @@ public final class EventController {
 
     public static let shared = EventController()
 
-    private init() {}
+    private init() {
+        observeApplicationActivation()
+        refreshLastNonTextFlashApplication()
+    }
 
     // MARK: - Properties
 
@@ -53,6 +56,7 @@ public final class EventController {
     /// Event tap 自动恢复次数（调试用）
     var tapRecoveryCount = 0
     private var lastNonTextFlashApplication: FocusedApplicationInfo?
+    private var activationObserver: NSObjectProtocol?
     /// 前缀树
     private let matcher = SnippetMatcher()
     /// 缩写→展开文本字典（用于快速查询完整展开）
@@ -616,16 +620,33 @@ public final class EventController {
     }
 
     public func exclusionTargetApplication() -> FocusedApplicationInfo? {
-        if let app = focusedApplicationInfo(), !app.isTextFlash {
-            lastNonTextFlashApplication = app
-            return app
-        }
+        refreshLastNonTextFlashApplication()
         return lastNonTextFlashApplication
     }
 
     private func refreshLastNonTextFlashApplication() {
-        guard let app = focusedApplicationInfo(), !app.isTextFlash else { return }
+        guard let app = focusedApplicationInfo() ?? frontmostApplicationInfo(), !app.isTextFlash else { return }
         lastNonTextFlashApplication = app
+    }
+
+    private func observeApplicationActivation() {
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard
+                let runningApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                let app = FocusedApplicationInfo(runningApp: runningApp),
+                !app.isTextFlash
+            else { return }
+            self?.lastNonTextFlashApplication = app
+        }
+    }
+
+    private func frontmostApplicationInfo() -> FocusedApplicationInfo? {
+        guard let runningApp = NSWorkspace.shared.frontmostApplication else { return nil }
+        return FocusedApplicationInfo(runningApp: runningApp)
     }
 
     public func focusedApplicationInfo() -> FocusedApplicationInfo? {
@@ -641,19 +662,22 @@ public final class EventController {
         var pidValue: pid_t = 0
         guard AXUIElementGetPid(axApp, &pidValue) == .success,
               let runningApp = NSRunningApplication(processIdentifier: pidValue),
-              let bundleID = runningApp.bundleIdentifier
+              runningApp.bundleIdentifier != nil
         else { return nil }
 
-        return FocusedApplicationInfo(
-            bundleID: bundleID,
-            localizedName: runningApp.localizedName ?? bundleID
-        )
+        return FocusedApplicationInfo(runningApp: runningApp)
     }
 }
 
 public struct FocusedApplicationInfo {
     public let bundleID: String
     public let localizedName: String
+
+    init?(runningApp: NSRunningApplication) {
+        guard let bundleID = runningApp.bundleIdentifier else { return nil }
+        self.bundleID = bundleID
+        self.localizedName = runningApp.localizedName ?? bundleID
+    }
 
     var isTextFlash: Bool {
         bundleID.hasPrefix("com.nekutai.textflash")
