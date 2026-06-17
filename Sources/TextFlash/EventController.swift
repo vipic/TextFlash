@@ -109,7 +109,7 @@ public final class EventController {
         return true
     }
 
-    /// 尝试验证并启动——权限不足时弹出引导对话框
+    /// 尝试验证并启动——权限不足时只触发系统权限提示。
     @discardableResult
     public func startWithPrompt() -> Bool {
         if start() { return true }
@@ -198,33 +198,14 @@ public final class EventController {
         return AXIsProcessTrusted()
     }
 
-    /// 请求辅助功能权限——弹出系统授权对话框，或引导用户打开系统设置
-    public func requestPermission() {
-        guard !checkPermission() else {
-            showPermissionGrantedAlert()
-            return
-        }
+    /// 请求辅助功能权限——只触发系统授权流程，不叠加应用内提示窗。
+    @discardableResult
+    public func requestPermission() -> Bool {
+        guard !checkPermission() else { return true }
 
-        // 只弹一次系统对话框
         let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
-        let alreadyTrusted = AXIsProcessTrustedWithOptions(options)
-
-        if alreadyTrusted || AXIsProcessTrusted() {
-            showPermissionGrantedAlert()
-        } else {
-            // 用户拒绝了系统弹窗或系统不再弹窗 → 引导打开系统设置
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = L10n.t("permission.request.title")
-                alert.informativeText = L10n.t("permission.request.message")
-                alert.alertStyle = .informational
-                alert.addButton(withTitle: L10n.t("permission.request.open"))
-                alert.addButton(withTitle: L10n.t("permission.request.later"))
-                if alert.runModal() == .alertFirstButtonReturn {
-                    Self.openAccessibilitySettings()
-                }
-            }
-        }
+        let trustedAfterPrompt = AXIsProcessTrustedWithOptions(options)
+        return trustedAfterPrompt || AXIsProcessTrusted()
     }
 
     public static func openAccessibilitySettings() {
@@ -237,16 +218,6 @@ public final class EventController {
             if let url = URL(string: candidate), NSWorkspace.shared.open(url) {
                 return
             }
-        }
-    }
-
-    private func showPermissionGrantedAlert() {
-        DispatchQueue.main.async {
-            let alert = NSAlert()
-            alert.messageText = L10n.t("permission.authorized.title")
-            alert.informativeText = L10n.t("alert.permission.enabled.message")
-            alert.alertStyle = .informational
-            alert.runModal()
         }
     }
 
