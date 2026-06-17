@@ -123,6 +123,10 @@
 "edit.variable.clipboard" = "Clipboard";
 "edit.variable.enter" = "Enter";
 "edit.variable.tab" = "Tab";
+"syntax.variable.clipboard" = "Clipboard";
+"syntax.variable.enter" = "↵ New Line";
+"syntax.variable.cursor" = "▎Cursor";
+"syntax.variable.datetime" = "Date Time";
 "edit.expandedText" = "Expanded Text";
 "edit.characterCount" = "%d characters";
 "edit.description" = "Description";
