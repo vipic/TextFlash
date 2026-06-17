@@ -90,11 +90,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let manager = SnippetManager()
+        let defaultContentSize = NSSize(width: 1040, height: 640)
+        let minimumContentSize = NSSize(width: 900, height: 560)
         let hostingView = NSHostingView(rootView: SnippetManagerView(manager: manager))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 500)
+        hostingView.frame = NSRect(origin: .zero, size: defaultContentSize)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
+            contentRect: NSRect(origin: .zero, size: defaultContentSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -104,8 +106,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.styleMask.insert(.fullSizeContentView)
         window.isReleasedWhenClosed = false  // 关闭时不释放，手动管理生命周期
         window.contentView = hostingView
+        window.contentMinSize = minimumContentSize
         window.center()
         window.setFrameAutosaveName("TextFlashSnippetWindow")
+        enforceMinimumContentSize(minimumContentSize, for: window)
 
         // 监听窗口关闭 → 清空引用，防止下次点击访问悬垂指针
         NotificationCenter.default.addObserver(
@@ -121,6 +125,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         snippetWindow = window
+    }
+
+    private func enforceMinimumContentSize(_ minimumSize: NSSize, for window: NSWindow) {
+        let contentSize = window.contentLayoutRect.size
+        guard contentSize.width < minimumSize.width || contentSize.height < minimumSize.height else { return }
+
+        let clampedSize = NSSize(
+            width: max(contentSize.width, minimumSize.width),
+            height: max(contentSize.height, minimumSize.height)
+        )
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: clampedSize))
+        frame.origin = window.frame.origin
+        window.setFrame(frame, display: false)
     }
 
     @MainActor @objc private func openSettingsWindow() {
