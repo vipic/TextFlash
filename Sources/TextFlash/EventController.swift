@@ -67,10 +67,6 @@ public final class EventController {
     private let excludedBundleIDsKey = "TextFlashExcludedBundleIDs"
     private let unicodeBundleIDsKey = "TextFlashUnicodeBundleIDs"
 
-    public var isPaused: Bool {
-        !isRunning
-    }
-
     public var excludedBundleIDs: Set<String> {
         get {
             Set(UserDefaults.standard.stringArray(forKey: excludedBundleIDsKey) ?? [])
@@ -136,18 +132,6 @@ public final class EventController {
     public func restart() {
         stop()
         start()
-    }
-
-    public func setPaused(_ paused: Bool) {
-        if paused {
-            stop()
-        } else {
-            startWithPrompt()
-        }
-    }
-
-    public func togglePaused() {
-        setPaused(!isPaused)
     }
 
     public func toggleExclusionForFocusedApplication() -> FocusedApplicationInfo? {

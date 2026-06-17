@@ -13,22 +13,36 @@ struct SettingsView: View {
     @State private var exclusionsCount = EventController.shared.excludedBundleIDs.count
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
+        ZStack {
+            SettingsPalette.window
+                .ignoresSafeArea()
 
-            Divider()
+            VStack(alignment: .leading, spacing: 16) {
+                header
+                    .glassContainer(cornerRadius: 16)
 
-            VStack(alignment: .leading, spacing: 18) {
-                languageSection
-                launchSection
-                timingSection
-                unicodeAppsSection
-                permissionSection
-                exclusionSection
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        statusSummary
+
+                        VStack(spacing: 10) {
+                            languageSection
+                            launchSection
+                            timingSection
+                            unicodeAppsSection
+                            permissionSection
+                            exclusionSection
+                        }
+                        .padding(10)
+                        .glassContainer(cornerRadius: 16)
+                    }
+                    .padding(.bottom, 4)
+                }
             }
-            .padding(20)
+            .padding(18)
         }
-        .frame(width: 540)
+        .frame(width: 620, height: 560)
+        .preferredColorScheme(.light)
         .sheet(isPresented: $showUnicodeApps) {
             UnicodeAppsSettingsView()
         }
@@ -52,24 +66,40 @@ struct SettingsView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 28))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundColor(.accentColor)
-
+        VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(L10n.t("settings.title"))
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(SettingsPalette.primaryText)
                 Text(L10n.t("settings.subtitle"))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 12))
+                    .foregroundColor(SettingsPalette.secondaryText)
             }
-
-            Spacer()
         }
-        .padding(20)
+        .padding(16)
+    }
+
+    private var statusSummary: some View {
+        HStack(spacing: 10) {
+            SummaryPill(
+                icon: hasAccessibilityPermission ? "checkmark.shield.fill" : "exclamationmark.shield.fill",
+                title: L10n.t("settings.permission.title"),
+                value: hasAccessibilityPermission ? L10n.t("debug.enabled") : L10n.t("settings.status.required"),
+                tint: hasAccessibilityPermission ? SettingsPalette.success : SettingsPalette.warning
+            )
+            SummaryPill(
+                icon: "keyboard.badge.ellipsis",
+                title: L10n.t("settings.unicodeApps.title"),
+                value: "\(unicodeAppsCount)",
+                tint: SettingsPalette.accent
+            )
+            SummaryPill(
+                icon: "nosign.app",
+                title: L10n.t("settings.exclusions.title"),
+                value: "\(exclusionsCount)",
+                tint: SettingsPalette.secondaryText
+            )
+        }
     }
 
     private var languageSection: some View {
@@ -78,14 +108,35 @@ struct SettingsView: View {
             title: L10n.t("settings.language.title"),
             subtitle: L10n.t("settings.language.subtitle")
         ) {
-            Picker("", selection: $settings.language) {
+            Menu {
                 ForEach(AppLanguage.allCases) { language in
-                    Text(language.displayName).tag(language)
+                    Button {
+                        settings.language = language
+                    } label: {
+                        if settings.language == language {
+                            Label(language.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(language.displayName)
+                        }
+                    }
                 }
+            } label: {
+                HStack(spacing: 8) {
+                    Text(settings.language.displayName)
+                        .font(.system(size: 13, weight: .medium))
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(SettingsPalette.mutedText)
+                }
+                .foregroundColor(SettingsPalette.primaryText)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(SettingsPalette.glass)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(SettingsPalette.border))
             }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .frame(width: 280)
+            .buttonStyle(.plain)
+            .frame(minWidth: 150, alignment: .trailing)
         }
     }
 
@@ -95,11 +146,11 @@ struct SettingsView: View {
             title: L10n.t("settings.permission.title"),
             subtitle: hasAccessibilityPermission
                 ? L10n.t("settings.permission.enabled")
-                : L10n.t("settings.permission.disabled")
+                : L10n.t("settings.permission.disabled"),
+            action: requestAccessibilityPermission
         ) {
             Button {
-                EventController.shared.requestPermission()
-                hasAccessibilityPermission = EventController.shared.checkPermission()
+                requestAccessibilityPermission()
             } label: {
                 Label(
                     hasAccessibilityPermission
@@ -158,7 +209,8 @@ struct SettingsView: View {
         SettingsSection(
             icon: "keyboard.badge.ellipsis",
             title: L10n.t("settings.unicodeApps.title"),
-            subtitle: L10n.t("settings.unicodeApps.subtitle")
+            subtitle: L10n.t("settings.unicodeApps.subtitle"),
+            action: { showUnicodeApps = true }
         ) {
             HStack(spacing: 8) {
                 InfoPopoverButton(
@@ -185,7 +237,8 @@ struct SettingsView: View {
         SettingsSection(
             icon: "nosign.app",
             title: L10n.t("settings.exclusions.title"),
-            subtitle: L10n.t("settings.exclusions.subtitle")
+            subtitle: L10n.t("settings.exclusions.subtitle"),
+            action: { showExclusions = true }
         ) {
             HStack(spacing: 8) {
                 InfoPopoverButton(
@@ -206,6 +259,14 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private func requestAccessibilityPermission() {
+        let granted = EventController.shared.requestPermission()
+        if !granted {
+            EventController.openAccessibilitySettings()
+        }
+        hasAccessibilityPermission = EventController.shared.checkPermission()
     }
 }
 
@@ -234,6 +295,7 @@ private struct InfoPopoverButton: View {
             }
             .frame(width: 260, alignment: .leading)
             .padding(14)
+            .preferredColorScheme(.light)
         }
     }
 }
@@ -544,32 +606,122 @@ private struct SettingsSection<Accessory: View>: View {
     let icon: String
     let title: String
     let subtitle: String
+    var action: (() -> Void)?
     @ViewBuilder var accessory: Accessory
 
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundColor(.accentColor)
-                .frame(width: 28)
+    init(
+        icon: String,
+        title: String,
+        subtitle: String,
+        action: (() -> Void)? = nil,
+        @ViewBuilder accessory: () -> Accessory
+    ) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.action = action
+        self.accessory = accessory()
+    }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.headline)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            if let action {
+                Button(action: action) {
+                    labelContent
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            } else {
+                labelContent
             }
 
             Spacer(minLength: 16)
             accessory
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.primary.opacity(0.04))
-        )
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .background(SettingsPalette.field)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(SettingsPalette.border))
+    }
+
+    private var labelContent: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(SettingsPalette.accent)
+                .frame(width: 30, height: 30)
+                .background(SettingsPalette.accent.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(SettingsPalette.primaryText)
+                Text(subtitle)
+                    .font(.system(size: 12))
+                    .foregroundColor(SettingsPalette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private enum SettingsPalette {
+    static let window = Color(red: 0.965, green: 0.960, blue: 0.985)
+    static let glass = Color.white.opacity(0.68)
+    static let field = Color.white.opacity(0.74)
+    static let surface = Color.white.opacity(0.58)
+    static let border = Color(red: 0.60, green: 0.56, blue: 0.72).opacity(0.20)
+    static let accent = Color(red: 0.42, green: 0.38, blue: 0.82)
+    static let warning = Color(red: 0.78, green: 0.48, blue: 0.16)
+    static let success = Color(red: 0.18, green: 0.58, blue: 0.43)
+    static let primaryText = Color(red: 0.12, green: 0.115, blue: 0.16)
+    static let secondaryText = Color(red: 0.39, green: 0.37, blue: 0.47)
+    static let mutedText = Color(red: 0.56, green: 0.53, blue: 0.62)
+}
+
+private extension View {
+    func glassContainer(cornerRadius: CGFloat) -> some View {
+        self
+            .background(SettingsPalette.glass)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay(RoundedRectangle(cornerRadius: cornerRadius).stroke(SettingsPalette.border))
+            .shadow(color: Color(red: 0.42, green: 0.36, blue: 0.62).opacity(0.08), radius: 18, x: 0, y: 10)
+    }
+}
+
+private struct SummaryPill: View {
+    let icon: String
+    let title: String
+    let value: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(tint)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(SettingsPalette.mutedText)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+                Text(value)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(SettingsPalette.primaryText)
+                    .monospacedDigit()
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SettingsPalette.field)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(SettingsPalette.border))
     }
 }
 

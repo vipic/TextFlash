@@ -131,10 +131,10 @@ struct SyntaxHighlightedText: View {
 
     private func pillTag(_ label: String, bg: Color, fg: Color, compact: Bool) -> some View {
         Text(label)
-            .font(.system(size: compact ? 9 : 11, weight: .semibold, design: .monospaced))
+            .font(.system(size: compact ? 10 : 12, weight: .semibold, design: .monospaced))
             .foregroundColor(fg)
             .padding(.horizontal, compact ? 4 : 6)
-            .padding(.vertical, compact ? 1 : 2)
+            .padding(.vertical, 1)
             .background(bg)
             .clipShape(RoundedRectangle(cornerRadius: compact ? 3 : 4))
     }

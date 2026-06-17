@@ -14,8 +14,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
     private var aboutWindow: NSWindow?
     private var updateWindow: NSWindow?
-    private var pauseMenuItem: NSMenuItem?
-    private var permissionMenuItem: NSMenuItem?
     private var updateMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -62,13 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: L10n.t("menu.openSnippets"), action: #selector(openSnippetWindow), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: L10n.t("menu.settings"), action: #selector(openSettingsWindow), keyEquivalent: ","))
-        let pauseItem = NSMenuItem(title: L10n.t("menu.pause"), action: #selector(togglePaused), keyEquivalent: "")
-        menu.addItem(pauseItem)
-        pauseMenuItem = pauseItem
-
-        let permissionItem = NSMenuItem(title: L10n.t("menu.permission.check"), action: #selector(checkAccessibilityPermission), keyEquivalent: "")
-        menu.addItem(permissionItem)
-        permissionMenuItem = permissionItem
+        menu.addItem(NSMenuItem(title: L10n.t("menu.unicode.addCurrent"), action: #selector(addCurrentAppToUnicodeInjection), keyEquivalent: ""))
 
 #if DEBUG
         menu.addItem(.separator())
@@ -88,8 +80,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - 片段窗口
 
     @MainActor @objc private func openSnippetWindow() {
-        // 懒加载：打开片段窗口时检查并引导权限
-        EventController.shared.startWithPrompt()
+        // 打开管理面板只做静默启动，不主动弹系统权限提示。
+        EventController.shared.start()
 
         if let existing = snippetWindow {
             existing.makeKeyAndOrderFront(nil)
@@ -347,13 +339,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func togglePaused() {
-        EventController.shared.togglePaused()
-        updateMenuState()
+    @objc private func addCurrentAppToUnicodeInjection() {
+        guard let app = EventController.shared.exclusionTargetApplication() else {
+            showSimpleAlert(
+                title: L10n.t("unicodeApps.addFailed.title"),
+                message: L10n.t("unicodeApps.addFailed.message")
+            )
+            return
+        }
+        var bundleIDs = EventController.shared.unicodeBundleIDs
+        bundleIDs.insert(app.bundleID)
+        EventController.shared.unicodeBundleIDs = bundleIDs
     }
 
-    @objc private func checkAccessibilityPermission() {
-        EventController.shared.requestPermission()
+    private func showSimpleAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .informational
+        alert.runModal()
     }
 
 #if DEBUG
@@ -427,19 +431,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateMenuState() {
-        let controller = EventController.shared
-        pauseMenuItem?.title = controller.isPaused ? L10n.t("menu.resume") : L10n.t("menu.pause")
-        permissionMenuItem?.title = controller.checkPermission() ? L10n.t("menu.permission.enabled") : L10n.t("menu.permission.required")
         updateMenuItem?.isEnabled = !UpdateChecker.shared.isDevBuild
         updateStatusIcon()
     }
 
     private func updateStatusIcon() {
         guard let button = statusItem?.button else { return }
-        let paused = EventController.shared.isPaused
         button.image = NSImage(
-            systemSymbolName: paused ? "pause.circle" : "text.word.spacing",
-            accessibilityDescription: paused ? "TextFlash 已暂停" : "TextFlash"
+            systemSymbolName: "text.word.spacing",
+            accessibilityDescription: "TextFlash"
         )
     }
 
