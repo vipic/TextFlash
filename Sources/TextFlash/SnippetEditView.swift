@@ -163,15 +163,42 @@ struct SnippetEditView: View {
     private var groupPicker: some View {
         HStack(spacing: 10) {
             fieldLabel(L10n.t("edit.group"))
-            Picker("", selection: $selectedGroupID) {
+
+            Menu {
                 ForEach(manager.groups) { group in
-                    Text(group.name).tag(group.id as UUID?)
+                    Button {
+                        selectedGroupID = group.id
+                    } label: {
+                        if selectedGroupID == group.id {
+                            Label(group.name, systemImage: "checkmark")
+                        } else {
+                            Text(group.name)
+                        }
+                    }
                 }
+            } label: {
+                HStack(spacing: 8) {
+                    Text(selectedGroupName)
+                        .font(.system(size: 13, weight: .medium))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(EditPalette.mutedText)
+                }
+                .foregroundColor(EditPalette.primaryText)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(EditPalette.glass)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(EditPalette.border))
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
+            .buttonStyle(.plain)
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
+    }
+
+    private var selectedGroupName: String {
+        manager.groups.first { $0.id == selectedGroupID }?.name ?? L10n.t("edit.group")
     }
 
     // MARK: - 缩写输入
@@ -407,6 +434,8 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.drawsBackground = false
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
         return scrollView
     }
 
