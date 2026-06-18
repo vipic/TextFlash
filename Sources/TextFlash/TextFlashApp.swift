@@ -456,6 +456,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func textFlashStatusIcon() -> NSImage {
+        if let url = Bundle.module.url(forResource: "MenuBarIcon", withExtension: "svg", subdirectory: "Assets"),
+           let image = NSImage(contentsOf: url) {
+            image.size = NSSize(width: 18, height: 18)
+            image.isTemplate = true
+            image.accessibilityDescription = "TextFlash"
+            return image
+        }
+
+        return fallbackStatusIcon()
+    }
+
+    private func fallbackStatusIcon() -> NSImage {
         let size = NSSize(width: 18, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
