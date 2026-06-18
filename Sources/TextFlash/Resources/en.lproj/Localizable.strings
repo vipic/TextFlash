@@ -119,14 +119,14 @@
 "edit.abbreviation.conflict" = "This abbreviation already exists. Choose another trigger.";
 "edit.variables" = "Insert Variables";
 "edit.variable.cursor" = "Cursor";
-"edit.variable.date" = "Date";
+"edit.variable.date" = "Date & Time";
 "edit.variable.clipboard" = "Clipboard";
 "edit.variable.enter" = "Enter";
 "edit.variable.tab" = "Tab";
 "syntax.variable.clipboard" = "Clipboard";
-"syntax.variable.enter" = "↵ New Line";
+"syntax.variable.enter" = "↵ Enter";
 "syntax.variable.cursor" = "▎Cursor";
-"syntax.variable.datetime" = "Date Time";
+"syntax.variable.datetime" = "Date & Time";
 "edit.expandedText" = "Expanded Text";
 "edit.characterCount" = "%d characters";
 "edit.description" = "Description";
