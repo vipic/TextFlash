@@ -52,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if let button = statusItem?.button {
             button.image = NSImage(
-                systemSymbolName: "text.word.spacing",
+                systemSymbolName: "textformat",
                 accessibilityDescription: "TextFlash"
             )
         }
@@ -456,7 +456,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateStatusIcon() {
         guard let button = statusItem?.button else { return }
         button.image = NSImage(
-            systemSymbolName: "text.word.spacing",
+            systemSymbolName: "textformat",
             accessibilityDescription: "TextFlash"
         )
     }
