@@ -273,7 +273,6 @@ final class SnippetManager: ObservableObject {
     }
 
     func replaceAllGroups(_ normalizedGroups: [SnippetGroup]) throws {
-        try writeAutomaticBackup()
         guard db.replaceAllGroups(normalizedGroups) else {
             throw SnippetImportExportError.databaseWriteFailed
         }
@@ -286,21 +285,6 @@ final class SnippetManager: ObservableObject {
 
     func importJSONData(_ data: Data) throws {
         try replaceAllGroups(parseImportJSONData(data))
-    }
-
-    func backupDirectoryURL() throws -> URL {
-        guard let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first else {
-            throw SnippetImportExportError.backupDirectoryUnavailable
-        }
-
-        let backupDir = appSupport
-            .appendingPathComponent("TextFlash")
-            .appendingPathComponent("Backups")
-        try FileManager.default.createDirectory(at: backupDir, withIntermediateDirectories: true)
-        return backupDir
     }
 
     // MARK: - 内部方法
@@ -332,36 +316,6 @@ final class SnippetManager: ObservableObject {
         operationErrorMessage = OperationError.databaseWriteFailed.localizedDescription
     }
 
-    private func writeAutomaticBackup() throws {
-        guard !groups.isEmpty else { return }
-        let backupDir = try backupDirectoryURL()
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmmss"
-        let filename = "TextFlash-AutoBackup-\(formatter.string(from: Date())).json"
-        try exportJSONData().write(to: backupDir.appendingPathComponent(filename), options: .atomic)
-        pruneAutomaticBackups(in: backupDir, keeping: 20)
-    }
-
-    private func pruneAutomaticBackups(in backupDir: URL, keeping limit: Int) {
-        guard let urls = try? FileManager.default.contentsOfDirectory(
-            at: backupDir,
-            includingPropertiesForKeys: [.contentModificationDateKey],
-            options: [.skipsHiddenFiles]
-        ) else { return }
-
-        let backups = urls
-            .filter { $0.lastPathComponent.hasPrefix("TextFlash-AutoBackup-") && $0.pathExtension == "json" }
-            .sorted { lhs, rhs in
-                let lhsDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-                let rhsDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-                return lhsDate > rhsDate
-            }
-
-        for url in backups.dropFirst(limit) {
-            try? FileManager.default.removeItem(at: url)
-        }
-    }
 }
 
 struct SnippetBackup: Codable {
@@ -423,7 +377,6 @@ enum SnippetBackupValidator {
 enum SnippetImportExportError: LocalizedError {
     case databaseWriteFailed
     case invalidBackup(String)
-    case backupDirectoryUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -431,8 +384,6 @@ enum SnippetImportExportError: LocalizedError {
             return "写入数据库失败"
         case .invalidBackup(let message):
             return "备份文件无效：\(message)"
-        case .backupDirectoryUnavailable:
-            return "无法打开备份目录"
         }
     }
 }

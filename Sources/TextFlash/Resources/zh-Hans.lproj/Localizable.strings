@@ -1,10 +1,6 @@
 "menu.openSnippets" = "打开片段管理…";
 "menu.settings" = "设置…";
-"menu.pause" = "暂停展开";
-"menu.resume" = "恢复展开";
-"menu.permission.check" = "检查辅助功能权限";
-"menu.permission.enabled" = "辅助功能权限：已启用";
-"menu.permission.required" = "辅助功能权限：需要启用";
+"menu.unicode.addCurrent" = "当前应用用 Unicode";
 "menu.debug" = "调试面板…";
 "menu.checkUpdates" = "检查更新…";
 "menu.about" = "关于 TextFlash";
@@ -104,7 +100,6 @@
 "snippets.count" = "%d 个片段";
 "snippets.detail.title" = "片段详情";
 "snippets.expandedText" = "展开文本";
-"snippets.variables.title" = "变量说明";
 "snippets.detail.empty" = "选择片段查看详情";
 "snippets.empty.createGroup" = "点击 + 按钮创建第一个分组";
 "snippets.empty.selectGroup" = "从左侧选择一个分组";
@@ -112,9 +107,9 @@
 "snippets.empty.createSnippet" = "点击右上角 + 新建片段";
 "snippets.toolbar.import" = "导入片段";
 "snippets.toolbar.export" = "导出片段";
-"snippets.toolbar.backups" = "打开备份目录";
 "snippets.toolbar.newSnippet" = "新建片段";
 "snippets.detail.editHelp" = "编辑 (⌘E)";
+"snippets.detail.trigger" = "触发词";
 
 "edit.new.title" = "新建片段";
 "edit.existing.title" = "编辑片段";
@@ -152,6 +147,8 @@
 "debug.abbreviations" = "缩写表";
 "debug.eventLog" = "事件日志";
 "debug.noLog" = "暂无日志";
+
+"settings.status.required" = "需要处理";
 
 "about.title" = "关于 TextFlash";
 "about.version" = "Version";

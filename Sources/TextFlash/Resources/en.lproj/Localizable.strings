@@ -1,10 +1,6 @@
 "menu.openSnippets" = "Open Snippets…";
 "menu.settings" = "Settings…";
-"menu.pause" = "Pause Expansion";
-"menu.resume" = "Resume Expansion";
-"menu.permission.check" = "Check Accessibility Permission";
-"menu.permission.enabled" = "Accessibility: Enabled";
-"menu.permission.required" = "Accessibility: Required";
+"menu.unicode.addCurrent" = "Use Unicode Here";
 "menu.debug" = "Debug Panel…";
 "menu.checkUpdates" = "Check for Updates…";
 "menu.about" = "About TextFlash";
@@ -104,7 +100,6 @@
 "snippets.count" = "%d snippets";
 "snippets.detail.title" = "Snippet Details";
 "snippets.expandedText" = "Expanded Text";
-"snippets.variables.title" = "Variables";
 "snippets.detail.empty" = "Select a snippet to view details";
 "snippets.empty.createGroup" = "Click + to create the first group";
 "snippets.empty.selectGroup" = "Select a group from the sidebar";
@@ -112,9 +107,9 @@
 "snippets.empty.createSnippet" = "Click + in the toolbar to create a snippet";
 "snippets.toolbar.import" = "Import Snippets";
 "snippets.toolbar.export" = "Export Snippets";
-"snippets.toolbar.backups" = "Open Backup Directory";
 "snippets.toolbar.newSnippet" = "New Snippet";
 "snippets.detail.editHelp" = "Edit (⌘E)";
+"snippets.detail.trigger" = "Trigger";
 
 "edit.new.title" = "New Snippet";
 "edit.existing.title" = "Edit Snippet";
@@ -152,6 +147,8 @@
 "debug.abbreviations" = "Abbreviations";
 "debug.eventLog" = "Event Log";
 "debug.noLog" = "No log yet";
+
+"settings.status.required" = "Required";
 
 "about.title" = "About TextFlash";
 "about.version" = "Version";
