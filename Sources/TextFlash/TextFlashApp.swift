@@ -51,10 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         }
         if let button = statusItem?.button {
-            button.image = NSImage(
-                systemSymbolName: "textformat",
-                accessibilityDescription: "TextFlash"
-            )
+            button.image = textFlashStatusIcon()
         }
 
         let menu = NSMenu()
@@ -455,10 +452,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateStatusIcon() {
         guard let button = statusItem?.button else { return }
-        button.image = NSImage(
-            systemSymbolName: "textformat",
-            accessibilityDescription: "TextFlash"
+        button.image = textFlashStatusIcon()
+    }
+
+    private func textFlashStatusIcon() -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size)
+        image.lockFocus()
+
+        NSColor.black.setFill()
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
+            .foregroundColor: NSColor.black,
+            .paragraphStyle: paragraph
+        ]
+        NSString(string: "T").draw(
+            in: NSRect(x: 0, y: 0.5, width: size.width, height: size.height),
+            withAttributes: attributes
         )
+
+        image.unlockFocus()
+        image.isTemplate = true
+        image.accessibilityDescription = "TextFlash"
+        return image
     }
 
     private var currentVersionString: String {
