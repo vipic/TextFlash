@@ -119,12 +119,12 @@
 "edit.abbreviation.conflict" = "这个缩写已存在，请换一个触发词。";
 "edit.variables" = "插入变量占位符";
 "edit.variable.cursor" = "光标";
-"edit.variable.date" = "日期";
+"edit.variable.date" = "日期时间";
 "edit.variable.clipboard" = "剪贴板";
 "edit.variable.enter" = "回车";
 "edit.variable.tab" = "Tab";
 "syntax.variable.clipboard" = "剪贴板";
-"syntax.variable.enter" = "↵ 换行";
+"syntax.variable.enter" = "↵ 回车";
 "syntax.variable.cursor" = "▎光标";
 "syntax.variable.datetime" = "日期时间";
 "edit.expandedText" = "展开文本";
