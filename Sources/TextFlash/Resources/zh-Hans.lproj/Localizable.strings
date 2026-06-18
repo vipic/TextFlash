@@ -8,14 +8,7 @@
 
 "window.snippets" = "TextFlash — 片段管理";
 "window.settings" = "TextFlash — 设置";
-"window.exclusions" = "TextFlash — 排除列表";
 "window.debug" = "TextFlash — 调试面板";
-
-"alert.permission.enabled.title" = "辅助功能权限已启用";
-"alert.permission.enabled.message" = "TextFlash 可以监听键盘事件并展开文本。";
-"permission.authorized.title" = "已经授权";
-"alert.focusedApp.missing.title" = "无法识别当前应用";
-"alert.focusedApp.missing.message" = "请切回目标应用后再试一次。";
 
 "settings.title" = "设置";
 "settings.subtitle" = "调整 TextFlash 的语言、权限和应用行为。";
@@ -71,11 +64,6 @@
 "common.rename" = "重命名";
 "common.save" = "保存";
 "common.done" = "完成";
-
-"permission.request.title" = "需要辅助功能权限";
-"permission.request.message" = "文本展开需要辅助功能权限来监听键盘事件并注入文本。\n\n请在「系统设置 → 隐私与安全性 → 辅助功能」中启用此应用。";
-"permission.request.open" = "打开系统设置";
-"permission.request.later" = "稍后";
 
 "snippets.group.new.title" = "新建分组";
 "snippets.group.rename.title" = "重命名分组";

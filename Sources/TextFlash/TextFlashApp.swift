@@ -60,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: L10n.t("menu.openSnippets"), action: #selector(openSnippetWindow), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: L10n.t("menu.settings"), action: #selector(openSettingsWindow), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: L10n.t("menu.unicode.addCurrent"), action: #selector(addCurrentAppToUnicodeInjection), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: L10n.t("menu.unicode.addCurrent"), action: #selector(addCurrentAppToUnicodeInput), keyEquivalent: ""))
 
 #if DEBUG
         menu.addItem(.separator())
@@ -148,10 +148,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let hostingView = NSHostingView(rootView: SettingsView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 540, height: 610)
+        let contentSize = NSSize(width: 620, height: 560)
+        hostingView.frame = NSRect(origin: .zero, size: contentSize)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 610),
+            contentRect: NSRect(origin: .zero, size: contentSize),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -356,7 +357,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func addCurrentAppToUnicodeInjection() {
+    @objc private func addCurrentAppToUnicodeInput() {
         guard let app = EventController.shared.exclusionTargetApplication() else {
             showSimpleAlert(
                 title: L10n.t("unicodeApps.addFailed.title"),
@@ -472,107 +473,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 extension AppDelegate: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         updateMenuState()
-    }
-}
-
-struct ExclusionsView: View {
-    @ObservedObject private var settings = AppSettings.shared
-    @State private var excludedBundleIDs = Array(EventController.shared.excludedBundleIDs).sorted()
-    @State private var exclusionErrorMessage: String?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(L10n.t("exclusions.title"))
-                    .font(.headline)
-                Spacer()
-                Button {
-                    addFocusedApplication()
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .buttonStyle(.plain)
-                .help(L10n.t("exclusions.addCurrent"))
-
-                Button {
-                    clearAll()
-                } label: {
-                    Image(systemName: "trash")
-                }
-                .buttonStyle(.plain)
-                .disabled(excludedBundleIDs.isEmpty)
-                .help(L10n.t("exclusions.clear"))
-            }
-            .padding()
-
-            Divider()
-
-            if excludedBundleIDs.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 28))
-                        .foregroundColor(.secondary.opacity(0.5))
-                    Text(L10n.t("exclusions.empty"))
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List {
-                    ForEach(excludedBundleIDs, id: \.self) { bundleID in
-                        HStack {
-                            Text(bundleID)
-                                .font(.system(.body, design: .monospaced))
-                                .lineLimit(1)
-                            Spacer()
-                            Button {
-                                remove(bundleID)
-                            } label: {
-                                Image(systemName: "minus.circle")
-                            }
-                            .buttonStyle(.plain)
-                            .help(L10n.t("exclusions.remove"))
-                        }
-                    }
-                }
-            }
-        }
-        .frame(minWidth: 420, minHeight: 320)
-        .onReceive(NotificationCenter.default.publisher(for: .textFlashExclusionsDidChange)) { _ in
-            refreshExclusions()
-        }
-        .alert(L10n.t("exclusions.addFailed.title"), isPresented: Binding(
-            get: { exclusionErrorMessage != nil },
-            set: { if !$0 { exclusionErrorMessage = nil } }
-        )) {
-            Button(L10n.t("common.confirm"), role: .cancel) { exclusionErrorMessage = nil }
-        } message: {
-            Text(exclusionErrorMessage ?? "")
-        }
-    }
-
-    private func remove(_ bundleID: String) {
-        var exclusions = EventController.shared.excludedBundleIDs
-        exclusions.remove(bundleID)
-        EventController.shared.excludedBundleIDs = exclusions
-    }
-
-    private func addFocusedApplication() {
-        guard let app = EventController.shared.exclusionTargetApplication() else {
-            exclusionErrorMessage = L10n.t("exclusions.addFailed.message")
-            return
-        }
-        var exclusions = EventController.shared.excludedBundleIDs
-        exclusions.insert(app.bundleID)
-        EventController.shared.excludedBundleIDs = exclusions
-    }
-
-    private func clearAll() {
-        EventController.shared.excludedBundleIDs = []
-    }
-
-    private func refreshExclusions() {
-        excludedBundleIDs = Array(EventController.shared.excludedBundleIDs).sorted()
     }
 }
 
