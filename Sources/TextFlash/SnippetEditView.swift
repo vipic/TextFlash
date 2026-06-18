@@ -36,63 +36,133 @@ struct SnippetEditView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 标题栏
-            HStack {
-                Text(isNew ? L10n.t("edit.new.title") : L10n.t("edit.existing.title"))
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                Spacer()
-                Button(L10n.t("common.cancel")) {
-                    manager.editMode = .inactive
+        ZStack {
+            EditPalette.window
+                .ignoresSafeArea()
+
+            VStack(spacing: 14) {
+                editHeader
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        formSection {
+                            groupPicker
+                            abbreviationField
+                        }
+
+                        formSection {
+                            variableBar
+                            expandedTextField
+                        }
+
+                        formSection {
+                            descriptionField
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 2)
                 }
-                .keyboardShortcut(.escape, modifiers: [])
+
+                editFooter
             }
-            .padding()
-
-            Divider()
-
-            // 表单内容
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    groupPicker
-                    abbreviationField
-                    variableBar
-                    expandedTextField
-                    descriptionField
-                }
-                .padding()
-            }
-
-            Divider()
-
-            // 底部按钮
-            HStack {
-                Spacer()
-                Button(L10n.t("common.cancel")) {
-                    manager.editMode = .inactive
-                }
-                .keyboardShortcut(.cancelAction)
-
-                Button(L10n.t("common.save")) {
-                    save()
-                }
-                .keyboardShortcut(.return, modifiers: .command)
-                .disabled(trimmedAbbreviation.isEmpty
-                          || trimmedExpandedText.isEmpty
-                          || hasAbbreviationConflict)
-            }
-            .padding()
+            .padding(.vertical, 16)
         }
-        .frame(minWidth: 560, minHeight: 480)
+        .frame(minWidth: 620, idealWidth: 660, minHeight: 560, idealHeight: 620)
+        .preferredColorScheme(.light)
         .onAppear(perform: populateFields)
+    }
+
+    private var editHeader: some View {
+        HStack(spacing: 12) {
+            Image(systemName: isNew ? "plus" : "pencil")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 30, height: 30)
+                .background(EditPalette.accent)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isNew ? L10n.t("edit.new.title") : L10n.t("edit.existing.title"))
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(EditPalette.primaryText)
+                Text(trimmedAbbreviation.isEmpty ? L10n.t("window.snippets") : trimmedAbbreviation)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundColor(EditPalette.secondaryText)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button {
+                manager.editMode = .inactive
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(EditPalette.secondaryText)
+                    .frame(width: 30, height: 30)
+                    .background(EditPalette.field)
+                    .clipShape(RoundedRectangle(cornerRadius: 9))
+                    .overlay(RoundedRectangle(cornerRadius: 9).stroke(EditPalette.border))
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.escape, modifiers: [])
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(EditPalette.glass)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(EditPalette.border))
+        .softEditShadow()
+        .padding(.horizontal, 16)
+    }
+
+    private var editFooter: some View {
+        HStack(spacing: 10) {
+            Spacer()
+
+            Button(L10n.t("common.cancel")) {
+                manager.editMode = .inactive
+            }
+            .buttonStyle(SecondaryEditButtonStyle())
+            .keyboardShortcut(.cancelAction)
+
+            Button(L10n.t("common.save")) {
+                save()
+            }
+            .buttonStyle(PrimaryEditButtonStyle())
+            .keyboardShortcut(.return, modifiers: .command)
+            .disabled(trimmedAbbreviation.isEmpty
+                      || trimmedExpandedText.isEmpty
+                      || hasAbbreviationConflict)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 2)
+    }
+
+    private func formSection<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            content()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(EditPalette.glass)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(EditPalette.border))
+        .softEditShadow()
+    }
+
+    private func fieldLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundColor(EditPalette.mutedText)
+            .textCase(.uppercase)
     }
 
     // MARK: - 分组选择
 
     private var groupPicker: some View {
-        HStack(spacing: 8) {
-            Text(L10n.t("edit.group")).font(.caption).foregroundColor(.secondary)
+        HStack(spacing: 10) {
+            fieldLabel(L10n.t("edit.group"))
             Picker("", selection: $selectedGroupID) {
                 ForEach(manager.groups) { group in
                     Text(group.name).tag(group.id as UUID?)
@@ -100,6 +170,7 @@ struct SnippetEditView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 
@@ -107,14 +178,20 @@ struct SnippetEditView: View {
 
     private var abbreviationField: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(L10n.t("edit.abbreviation")).font(.caption).foregroundColor(.secondary)
+            fieldLabel(L10n.t("edit.abbreviation"))
             TextField(L10n.t("edit.abbreviation.placeholder"), text: $abbreviation)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(.body, design: .monospaced))
+                .textFieldStyle(.plain)
+                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .foregroundColor(EditPalette.primaryText)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(EditPalette.field)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(hasAbbreviationConflict ? EditPalette.warning.opacity(0.42) : EditPalette.border))
             if hasAbbreviationConflict {
                 Text(L10n.t("edit.abbreviation.conflict"))
                     .font(.caption2)
-                    .foregroundColor(.red)
+                    .foregroundColor(EditPalette.warning)
             }
         }
     }
@@ -123,9 +200,9 @@ struct SnippetEditView: View {
 
     private var variableBar: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(L10n.t("edit.variables")).font(.caption).foregroundColor(.secondary)
+            fieldLabel(L10n.t("edit.variables"))
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     VariableButton(L10n.t("edit.variable.cursor"), raw: "{cursor}", into: $expandedText)
                     VariableButton(L10n.t("edit.variable.date"), raw: "{datetime:}", into: $expandedText)
                     VariableButton(L10n.t("edit.variable.clipboard"), raw: "{clipboard}", into: $expandedText)
@@ -141,19 +218,20 @@ struct SnippetEditView: View {
     private var expandedTextField: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(L10n.t("edit.expandedText")).font(.caption).foregroundColor(.secondary)
+                fieldLabel(L10n.t("edit.expandedText"))
                 Spacer()
                 Text(L10n.f("edit.characterCount", expandedText.count))
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(EditPalette.mutedText)
                     .monospacedDigit()
             }
             PlainTextEditor(text: $expandedText)
-                .font(.system(.body, design: .monospaced))
-                .frame(minHeight: 160)
+                .frame(minHeight: 180)
+                .background(EditPalette.field)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(EditPalette.border, lineWidth: 1)
                 )
         }
     }
@@ -162,9 +240,16 @@ struct SnippetEditView: View {
 
     private var descriptionField: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(L10n.t("edit.description")).font(.caption).foregroundColor(.secondary)
+            fieldLabel(L10n.t("edit.description"))
             TextField(L10n.t("edit.description.placeholder"), text: $description)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundColor(EditPalette.primaryText)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(EditPalette.field)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(EditPalette.border))
         }
     }
 
@@ -233,17 +318,69 @@ private struct VariableButton: View {
         Button {
             text.append(raw)
         } label: {
-            Text(label)
-                .font(.system(.caption))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.primary.opacity(0.08))
-                )
+            HStack(spacing: 5) {
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
+                Text(raw)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundColor(EditPalette.mutedText)
+                    .lineLimit(1)
+            }
+            .foregroundColor(EditPalette.secondaryText)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(EditPalette.field)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(EditPalette.border))
         }
         .buttonStyle(.plain)
         .help(raw)
+    }
+}
+
+// MARK: - 编辑面板视觉组件
+
+private enum EditPalette {
+    static let window = Color(red: 0.965, green: 0.960, blue: 0.985)
+    static let glass = Color.white.opacity(0.68)
+    static let field = Color.white.opacity(0.74)
+    static let border = Color(red: 0.60, green: 0.56, blue: 0.72).opacity(0.20)
+    static let accent = Color(red: 0.42, green: 0.38, blue: 0.82)
+    static let warning = Color(red: 0.78, green: 0.48, blue: 0.16)
+    static let primaryText = Color(red: 0.12, green: 0.115, blue: 0.16)
+    static let secondaryText = Color(red: 0.39, green: 0.37, blue: 0.47)
+    static let mutedText = Color(red: 0.56, green: 0.53, blue: 0.62)
+}
+
+private extension View {
+    func softEditShadow() -> some View {
+        shadow(color: Color(red: 0.42, green: 0.36, blue: 0.62).opacity(0.08), radius: 18, x: 0, y: 10)
+    }
+}
+
+private struct PrimaryEditButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .background(EditPalette.accent.opacity(configuration.isPressed ? 0.82 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .opacity(configuration.isPressed ? 0.88 : 1)
+    }
+}
+
+private struct SecondaryEditButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .medium))
+            .foregroundColor(EditPalette.secondaryText)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(EditPalette.field.opacity(configuration.isPressed ? 0.70 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(EditPalette.border))
     }
 }
 
@@ -267,6 +404,9 @@ struct PlainTextEditor: NSViewRepresentable {
         textView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         textView.delegate = context.coordinator
         textView.allowsUndo = true
+        textView.drawsBackground = false
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
         return scrollView
     }
 
