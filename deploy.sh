@@ -24,6 +24,7 @@ fi
 
 cd "$PROJECT_DIR"
 
+rm -rf "$RESOURCE_BUNDLE"
 swift build -Xswiftc -DDISABLE_PREVIEWS
 test -f "$BUILD_DIR/$APP_NAME" || { echo "❌ 构建失败"; exit 1; }
 echo "✅ Debug 编译完成"

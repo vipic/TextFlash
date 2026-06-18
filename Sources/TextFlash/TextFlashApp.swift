@@ -456,7 +456,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func textFlashStatusIcon() -> NSImage {
-        if let image = bundledStatusIcon(extension: "svg") ?? bundledStatusIcon(extension: "png") {
+        if let image = bundledStatusIcon(extension: "svg") {
             return image
         }
 

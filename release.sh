@@ -75,6 +75,7 @@ fi
 # ── 2. Release 编译 ──
 echo ""
 echo "━━━ 2/6 Release 编译 ━━━"
+rm -rf "$BUILD_DIR/${APP_NAME}_${APP_NAME}.bundle"
 swift build -c release -Xswiftc -DDISABLE_PREVIEWS
 
 BIN="$BUILD_DIR/$APP_NAME"
