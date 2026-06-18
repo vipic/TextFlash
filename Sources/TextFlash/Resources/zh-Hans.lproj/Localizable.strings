@@ -1,6 +1,6 @@
 "menu.openSnippets" = "打开片段管理…";
 "menu.settings" = "设置…";
-"menu.unicode.addCurrent" = "当前应用用 Unicode";
+"menu.unicode.addCurrent" = "当前应用用 Unicode 输入";
 "menu.debug" = "调试面板…";
 "menu.checkUpdates" = "检查更新…";
 "menu.about" = "关于 TextFlash";
@@ -15,7 +15,7 @@
 "alert.permission.enabled.message" = "TextFlash 可以监听键盘事件并展开文本。";
 "permission.authorized.title" = "已经授权";
 "alert.focusedApp.missing.title" = "无法识别当前应用";
-"alert.focusedApp.missing.message" = "请切回目标应用后再从菜单栏切换排除状态。";
+"alert.focusedApp.missing.message" = "请切回目标应用后再试一次。";
 
 "settings.title" = "设置";
 "settings.subtitle" = "调整 TextFlash 的语言、权限和应用行为。";
@@ -40,11 +40,11 @@
 "settings.timing.subtitle" = "部分聊天应用处理删除较慢；增加等待时间可减少错位替换。";
 "settings.timing.delay" = "每字符等待 %.0f ms";
 "settings.timing.effective" = "例如 3 字符缩写约等待 %.0f ms";
-"settings.unicodeApps.title" = "Unicode 注入应用";
-"settings.unicodeApps.subtitle" = "列表中的应用会跳过 AX 写入，直接使用 Unicode 注入。";
+"settings.unicodeApps.title" = "Unicode 输入应用";
+"settings.unicodeApps.subtitle" = "列表中的应用会改用 Unicode 输入，绕过常规辅助功能文本写入。";
 "settings.unicodeApps.manage" = "管理";
-"settings.unicodeApps.info.title" = "为什么需要 Unicode 注入？";
-"settings.unicodeApps.info.message" = "有些应用虽然能输入文字，但不稳定支持辅助功能文本写入。加入这里后，TextFlash 会改用模拟 Unicode 按键输入，通常能改善聊天、编辑器或跨平台应用里的替换成功率。";
+"settings.unicodeApps.info.title" = "为什么使用 Unicode 输入？";
+"settings.unicodeApps.info.message" = "有些应用虽然能正常打字，但不稳定支持常规辅助功能文本写入。加入这里后，TextFlash 会改用 Unicode 按键输入，通常能改善聊天、编辑器或跨平台应用里的替换成功率。";
 
 "exclusions.title" = "排除列表";
 "exclusions.choose" = "选择应用";
@@ -53,13 +53,13 @@
 "exclusions.empty" = "没有被排除的应用";
 "exclusions.remove" = "从排除列表移除";
 "exclusions.addFailed.title" = "无法添加应用";
-"exclusions.addFailed.message" = "请切回目标应用后再添加，或先从菜单栏使用“排除当前应用”。";
+"exclusions.addFailed.message" = "请先切回目标应用，或使用“选择应用”添加。";
 
-"unicodeApps.title" = "Unicode 注入应用";
+"unicodeApps.title" = "Unicode 输入应用";
 "unicodeApps.choose" = "选择应用";
 "unicodeApps.addCurrent" = "添加当前应用";
 "unicodeApps.clear" = "清空列表";
-"unicodeApps.empty" = "没有强制使用 Unicode 注入的应用";
+"unicodeApps.empty" = "没有使用 Unicode 输入的应用";
 "unicodeApps.remove" = "从列表移除";
 "unicodeApps.addFailed.title" = "无法添加应用";
 "unicodeApps.addFailed.message" = "请先切回目标应用，或使用“选择应用”添加。";
@@ -155,8 +155,8 @@
 "settings.status.required" = "需要处理";
 
 "about.title" = "关于 TextFlash";
-"about.version" = "Version";
-"about.build" = "Build";
+"about.version" = "版本";
+"about.build" = "构建号";
 "about.description" = "轻量级 macOS 菜单栏文本展开工具。定义缩写，在任何输入位置自动展开为完整文本。";
 "about.credits" = "基于 SwiftUI 构建 · SQLite 存储 · Accessibility API";
 
