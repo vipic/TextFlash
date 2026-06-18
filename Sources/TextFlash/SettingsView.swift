@@ -416,12 +416,14 @@ private struct ManagedApplicationsSettingsView: View {
 
     private func appRow(_ bundleID: String) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: configuration.rowIcon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(SettingsPalette.accent)
+            Image(nsImage: appIcon(for: bundleID))
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 22, height: 22)
                 .frame(width: 28, height: 28)
-                .background(SettingsPalette.accent.opacity(0.10))
+                .background(SettingsPalette.field)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(SettingsPalette.border))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(appName(for: bundleID))
@@ -528,6 +530,15 @@ private struct ManagedApplicationsSettingsView: View {
             ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
             ?? url.deletingPathExtension().lastPathComponent
     }
+
+    private func appIcon(for bundleID: String) -> NSImage {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            return NSWorkspace.shared.icon(for: .application)
+        }
+        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        icon.size = NSSize(width: 32, height: 32)
+        return icon
+    }
 }
 
 private enum ManagedApplicationsConfiguration {
@@ -594,13 +605,6 @@ private enum ManagedApplicationsConfiguration {
         switch self {
         case .unicodeInput: return "keyboard.badge.ellipsis"
         case .exclusions: return "nosign.app"
-        }
-    }
-
-    var rowIcon: String {
-        switch self {
-        case .unicodeInput: return "keyboard"
-        case .exclusions: return "app.badge"
         }
     }
 

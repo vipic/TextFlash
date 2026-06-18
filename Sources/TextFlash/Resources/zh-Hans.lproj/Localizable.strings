@@ -73,6 +73,7 @@
 "snippets.group.delete.title" = "删除分组？";
 "snippets.group.delete.message" = "分组内的所有片段都会被删除，此操作无法撤销。";
 "snippets.group.sidebarTitle" = "分组";
+"snippets.group.all" = "全部";
 "snippets.group.addHelp" = "新建分组";
 
 "snippets.delete.title" = "删除片段？";
