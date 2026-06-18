@@ -182,11 +182,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        let contentSize = NSSize(width: 360, height: 300)
         let hostingView = NSHostingView(rootView: AboutView())
-        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 300)
+        hostingView.frame = NSRect(origin: .zero, size: contentSize)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 320, height: 300),
+            contentRect: NSRect(origin: .zero, size: contentSize),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -220,6 +221,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        let contentSize = NSSize(width: 460, height: 380)
         let hostingView = NSHostingView(rootView: UpdateView(
             state: .checking,
             releaseNotes: nil,
@@ -227,10 +229,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             latestVersion: nil,
             onCancel: nil
         ))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 420, height: 360)
+        hostingView.frame = NSRect(origin: .zero, size: contentSize)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 360),
+            contentRect: NSRect(origin: .zero, size: contentSize),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
