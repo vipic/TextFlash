@@ -300,6 +300,8 @@ struct SnippetManagerView: View {
 
             ScrollView {
                 LazyVStack(spacing: 4) {
+                    allGroupsRow
+
                     ForEach(manager.groups) { group in
                         groupRow(group)
                             .contextMenu { groupContextMenu(group) }
@@ -310,6 +312,34 @@ struct SnippetManagerView: View {
             Spacer(minLength: 0)
         }
         .padding(14)
+    }
+
+    private var allGroupsRow: some View {
+        let selected = manager.selectedGroupID == nil
+
+        return Button {
+            manager.selectedGroupID = nil
+        } label: {
+            HStack(spacing: 8) {
+                GroupIcon(systemImage: "tray.full", selected: selected)
+
+                Text(L10n.t("snippets.group.all"))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(selected ? GlassPalette.primaryText : GlassPalette.secondaryText)
+                    .lineLimit(1)
+
+                Spacer()
+
+                CountPill(value: manager.allSnippetsCount, selected: selected)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selected ? GlassPalette.accentSoft : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
     }
 
     private func groupRow(_ group: SnippetGroup) -> some View {
@@ -358,13 +388,13 @@ struct SnippetManagerView: View {
 
     private var snippetColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let group = manager.selectedGroup {
+            if !manager.groups.isEmpty {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(group.name)
+                        Text(selectedGroupTitle)
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(GlassPalette.primaryText)
-                        Text(L10n.f("snippets.count", manager.filteredSnippets.count))
+                        Text(L10n.f("snippets.count", manager.filteredSnippetItems.count))
                             .font(.system(size: 12))
                             .foregroundColor(GlassPalette.secondaryText)
                     }
@@ -373,7 +403,7 @@ struct SnippetManagerView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
 
-                snippetListArea(group: group)
+                snippetListArea()
             } else {
                 emptyState
             }
@@ -382,20 +412,20 @@ struct SnippetManagerView: View {
     }
 
     @ViewBuilder
-    private func snippetListArea(group: SnippetGroup) -> some View {
-        let snippets = manager.filteredSnippets
-        if snippets.isEmpty {
+    private func snippetListArea() -> some View {
+        let items = manager.filteredSnippetItems
+        if items.isEmpty {
             emptySnippetState(hasSearch: !manager.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty)
         } else {
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(Array(snippets.enumerated()), id: \.element.id) { index, snippet in
-                        let selected = manager.selectedSnippetID == snippet.id
-                        let nextSelected = index + 1 < snippets.count && manager.selectedSnippetID == snippets[index + 1].id
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        let selected = manager.selectedSnippetID == item.snippet.id
+                        let nextSelected = index + 1 < items.count && manager.selectedSnippetID == items[index + 1].snippet.id
                         VStack(spacing: 0) {
-                            snippetRow(snippet, group: group)
-                                .contextMenu { snippetContextMenu(snippet, group: group) }
-                            if index != snippets.indices.last {
+                            snippetRow(item)
+                                .contextMenu { snippetContextMenu(item.snippet, groupID: item.groupID) }
+                            if index != items.indices.last {
                                 Divider()
                                     .overlay(GlassPalette.border)
                                     .padding(.leading, 12)
@@ -414,7 +444,8 @@ struct SnippetManagerView: View {
         }
     }
 
-    private func snippetRow(_ snippet: Snippet, group: SnippetGroup) -> some View {
+    private func snippetRow(_ item: SnippetManager.SnippetListItem) -> some View {
+        let snippet = item.snippet
         let selected = manager.selectedSnippetID == snippet.id
 
         return Button {
@@ -425,6 +456,13 @@ struct SnippetManagerView: View {
                     Text(snippet.abbreviation)
                         .font(.system(size: 13, weight: .semibold, design: .monospaced))
                         .foregroundColor(GlassPalette.accent)
+
+                    if manager.selectedGroupID == nil {
+                        Text(item.groupName)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(GlassPalette.mutedText)
+                            .lineLimit(1)
+                    }
 
                     if !snippet.description.isEmpty {
                         Text(snippet.description)
@@ -449,13 +487,13 @@ struct SnippetManagerView: View {
     }
 
     @ViewBuilder
-    private func snippetContextMenu(_ snippet: Snippet, group: SnippetGroup) -> some View {
+    private func snippetContextMenu(_ snippet: Snippet, groupID: UUID) -> some View {
         Button(L10n.t("common.edit")) {
             manager.editMode = .existing(snippet)
         }
         Divider()
         Button(L10n.t("common.delete"), role: .destructive) {
-            pendingSnippetDeletion = PendingSnippetDeletion(snippet: snippet, groupID: group.id)
+            pendingSnippetDeletion = PendingSnippetDeletion(snippet: snippet, groupID: groupID)
         }
     }
 
@@ -463,9 +501,8 @@ struct SnippetManagerView: View {
 
     @ViewBuilder
     private var detailPanel: some View {
-        if let group = manager.selectedGroup,
-           let sid = manager.selectedSnippetID,
-           let snippet = group.snippets.first(where: { $0.id == sid }) {
+        if let sid = manager.selectedSnippetID,
+           let snippet = manager.groups.lazy.flatMap(\.snippets).first(where: { $0.id == sid }) {
             snippetDetail(snippet)
         } else {
             detailEmpty
@@ -584,6 +621,13 @@ struct SnippetManagerView: View {
         }
     }
 
+    private var selectedGroupTitle: String {
+        if let group = manager.selectedGroup {
+            return group.name
+        }
+        return L10n.t("snippets.group.all")
+    }
+
     private func requestAccessibilityPermission() {
         let granted = EventController.shared.requestPermission()
         if !granted {
@@ -670,6 +714,7 @@ private struct CountPill: View {
 
 private struct GroupIcon: View {
     let name: String
+    var systemImage: String?
     let selected: Bool
 
     private var letter: String {
@@ -679,12 +724,25 @@ private struct GroupIcon: View {
     }
 
     var body: some View {
-        Text(letter)
-            .font(.system(size: 10, weight: .semibold))
+        Group {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: 10, weight: .semibold))
+            } else {
+                Text(letter)
+                    .font(.system(size: 10, weight: .semibold))
+            }
+        }
             .foregroundColor(selected ? .white : GlassPalette.accent)
             .frame(width: 18, height: 18)
             .background(selected ? GlassPalette.accent : GlassPalette.accent.opacity(0.10))
             .clipShape(RoundedRectangle(cornerRadius: 5))
+    }
+
+    init(name: String = "", systemImage: String? = nil, selected: Bool) {
+        self.name = name
+        self.systemImage = systemImage
+        self.selected = selected
     }
 }
 

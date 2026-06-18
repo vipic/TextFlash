@@ -73,6 +73,7 @@
 "snippets.group.delete.title" = "Delete Group?";
 "snippets.group.delete.message" = "All snippets in this group will be deleted. This cannot be undone.";
 "snippets.group.sidebarTitle" = "Groups";
+"snippets.group.all" = "All";
 "snippets.group.addHelp" = "New Group";
 
 "snippets.delete.title" = "Delete Snippet?";

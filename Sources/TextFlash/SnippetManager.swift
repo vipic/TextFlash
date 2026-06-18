@@ -14,6 +14,14 @@ extension Notification.Name {
 @MainActor
 final class SnippetManager: ObservableObject {
 
+    struct SnippetListItem: Identifiable, Hashable {
+        let groupID: UUID
+        let groupName: String
+        let snippet: Snippet
+
+        var id: UUID { snippet.id }
+    }
+
     // MARK: 发布属性
 
     @Published var groups: [SnippetGroup] = []
@@ -33,14 +41,35 @@ final class SnippetManager: ObservableObject {
 
     /// 当前分组中匹配搜索的片段
     var filteredSnippets: [Snippet] {
-        let snippets = selectedGroupSnippets
-        let q = searchQuery.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return snippets }
-        return snippets.filter { snippet in
-            snippet.abbreviation.localizedCaseInsensitiveContains(q) ||
-            snippet.description.localizedCaseInsensitiveContains(q) ||
-            snippet.expandedText.localizedCaseInsensitiveContains(q)
+        filteredSnippetItems.map(\.snippet)
+    }
+
+    var selectedSnippetItems: [SnippetListItem] {
+        if let selectedGroupID,
+           let group = groups.first(where: { $0.id == selectedGroupID }) {
+            return group.snippets.map { SnippetListItem(groupID: group.id, groupName: group.name, snippet: $0) }
         }
+
+        return groups.flatMap { group in
+            group.snippets.map { SnippetListItem(groupID: group.id, groupName: group.name, snippet: $0) }
+        }
+    }
+
+    var filteredSnippetItems: [SnippetListItem] {
+        let items = selectedSnippetItems
+        let q = searchQuery.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return items }
+        return items.filter { item in
+            let snippet = item.snippet
+            return snippet.abbreviation.localizedCaseInsensitiveContains(q) ||
+            snippet.description.localizedCaseInsensitiveContains(q) ||
+            snippet.expandedText.localizedCaseInsensitiveContains(q) ||
+            item.groupName.localizedCaseInsensitiveContains(q)
+        }
+    }
+
+    var allSnippetsCount: Int {
+        groups.reduce(0) { $0 + $1.snippets.count }
     }
 
     // MARK: 编辑状态（由 View 驱动）
@@ -53,7 +82,7 @@ final class SnippetManager: ObservableObject {
                 editingGroupID = groupID
             case .existing(let snippet):
                 editingSnippet = snippet
-                editingGroupID = selectedGroupID
+                editingGroupID = groupID(containing: snippet.id)
             case .inactive:
                 editingSnippet = nil
                 editingGroupID = nil
@@ -137,7 +166,7 @@ final class SnippetManager: ObservableObject {
         }
         groups.removeAll { $0.id == group.id }
         if selectedGroupID == group.id {
-            selectedGroupID = groups.first?.id
+            selectedGroupID = nil
         }
         notify()
     }
@@ -251,6 +280,12 @@ final class SnippetManager: ObservableObject {
         notify()
     }
 
+    func groupID(containing snippetID: UUID) -> UUID? {
+        groups.first { group in
+            group.snippets.contains { $0.id == snippetID }
+        }?.id
+    }
+
     func abbreviationExists(_ abbreviation: String, excluding excludedSnippetID: UUID? = nil) -> Bool {
         let normalized = abbreviation.trimmingCharacters(in: .whitespaces)
         guard !normalized.isEmpty else { return false }
@@ -277,7 +312,7 @@ final class SnippetManager: ObservableObject {
             throw SnippetImportExportError.databaseWriteFailed
         }
         groups = normalizedGroups
-        selectedGroupID = groups.first?.id
+        selectedGroupID = nil
         selectedSnippetID = nil
         searchQuery = ""
         notify()
@@ -292,9 +327,6 @@ final class SnippetManager: ObservableObject {
     /// 从数据库重新加载全部数据
     private func reload() {
         groups = db.fetchAllGroups()
-        if selectedGroupID == nil {
-            selectedGroupID = groups.first?.id
-        }
     }
 
     private func createDefaultGroup() {
@@ -304,7 +336,6 @@ final class SnippetManager: ObservableObject {
             return
         }
         groups.append(group)
-        selectedGroupID = group.id
         notify()
     }
 
