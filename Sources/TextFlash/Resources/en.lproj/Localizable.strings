@@ -1,6 +1,6 @@
 "menu.openSnippets" = "Open Snippets…";
 "menu.settings" = "Settings…";
-"menu.unicode.addCurrent" = "Use Unicode Here";
+"menu.unicode.addCurrent" = "Use Unicode for This App";
 "menu.debug" = "Debug Panel…";
 "menu.checkUpdates" = "Check for Updates…";
 "menu.about" = "About TextFlash";
@@ -15,7 +15,7 @@
 "alert.permission.enabled.message" = "TextFlash can monitor keyboard events and expand text.";
 "permission.authorized.title" = "Already Authorized";
 "alert.focusedApp.missing.title" = "Cannot Identify Current App";
-"alert.focusedApp.missing.message" = "Switch back to the target app, then toggle exclusion from the menu bar.";
+"alert.focusedApp.missing.message" = "Switch back to the target app, then try again.";
 
 "settings.title" = "Settings";
 "settings.subtitle" = "Adjust TextFlash language, permissions, and app behavior.";
@@ -40,11 +40,11 @@
 "settings.timing.subtitle" = "Some chat apps process deletion slowly. Increase this delay if replacements appear shifted.";
 "settings.timing.delay" = "%.0f ms per character";
 "settings.timing.effective" = "A 3-character abbreviation waits about %.0f ms";
-"settings.unicodeApps.title" = "Unicode Injection Apps";
-"settings.unicodeApps.subtitle" = "Apps in this list skip AX writing and use Unicode insertion directly.";
+"settings.unicodeApps.title" = "Unicode Input Apps";
+"settings.unicodeApps.subtitle" = "Apps in this list use Unicode input instead of standard Accessibility text insertion.";
 "settings.unicodeApps.manage" = "Manage";
-"settings.unicodeApps.info.title" = "Why use Unicode injection?";
-"settings.unicodeApps.info.message" = "Some apps accept typed text but do not reliably support Accessibility text writing. Adding them here makes TextFlash simulate Unicode key input instead, which can improve replacement reliability in chat apps, editors, and cross-platform apps.";
+"settings.unicodeApps.info.title" = "Why use Unicode input?";
+"settings.unicodeApps.info.message" = "Some apps accept typed text but do not reliably support standard Accessibility text insertion. Adding them here makes TextFlash use Unicode key input instead, which can improve replacement reliability in chat apps, editors, and cross-platform apps.";
 
 "exclusions.title" = "Exclusions";
 "exclusions.choose" = "Choose App";
@@ -53,13 +53,13 @@
 "exclusions.empty" = "No excluded apps";
 "exclusions.remove" = "Remove from exclusions";
 "exclusions.addFailed.title" = "Cannot Add App";
-"exclusions.addFailed.message" = "Switch back to the target app before adding it, or use “Exclude Current App” from the menu bar first.";
+"exclusions.addFailed.message" = "Switch back to the target app first, or use Choose App.";
 
-"unicodeApps.title" = "Unicode Injection Apps";
+"unicodeApps.title" = "Unicode Input Apps";
 "unicodeApps.choose" = "Choose App";
 "unicodeApps.addCurrent" = "Add Current App";
 "unicodeApps.clear" = "Clear List";
-"unicodeApps.empty" = "No apps are forced to use Unicode insertion";
+"unicodeApps.empty" = "No apps use Unicode input";
 "unicodeApps.remove" = "Remove from list";
 "unicodeApps.addFailed.title" = "Cannot Add App";
 "unicodeApps.addFailed.message" = "Switch back to the target app first, or use Choose App.";
@@ -152,7 +152,7 @@
 "debug.eventLog" = "Event Log";
 "debug.noLog" = "No log yet";
 
-"settings.status.required" = "Required";
+"settings.status.required" = "Action Needed";
 
 "about.title" = "About TextFlash";
 "about.version" = "Version";
