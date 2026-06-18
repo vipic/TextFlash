@@ -320,13 +320,10 @@ struct SnippetManagerView: View {
             manager.selectedGroupID = group.id
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: selected ? "folder.fill" : "folder")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(selected ? GlassPalette.accent : GlassPalette.mutedText)
-                    .frame(width: 16)
+                GroupIcon(name: group.name, selected: selected)
 
                 Text(group.name)
-                    .font(.system(size: 13, weight: selected ? .semibold : .regular))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(selected ? GlassPalette.primaryText : GlassPalette.secondaryText)
                     .lineLimit(1)
 
@@ -399,10 +396,12 @@ struct SnippetManagerView: View {
                         VStack(spacing: 0) {
                             snippetRow(snippet, group: group)
                                 .contextMenu { snippetContextMenu(snippet, group: group) }
-                            if !selected, !nextSelected, index != snippets.indices.last {
+                            if index != snippets.indices.last {
                                 Divider()
                                     .overlay(GlassPalette.border)
                                     .padding(.leading, 12)
+                                    .padding(.trailing, 12)
+                                    .opacity(selected || nextSelected ? 0 : 1)
                             }
                         }
                     }
@@ -668,6 +667,26 @@ private struct CountPill: View {
             .padding(.vertical, 3)
             .background(selected ? GlassPalette.accent.opacity(0.10) : GlassPalette.field)
             .clipShape(Capsule())
+    }
+}
+
+private struct GroupIcon: View {
+    let name: String
+    let selected: Bool
+
+    private var letter: String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = trimmed.first else { return "#" }
+        return String(first).uppercased()
+    }
+
+    var body: some View {
+        Text(letter)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundColor(selected ? .white : GlassPalette.accent)
+            .frame(width: 18, height: 18)
+            .background(selected ? GlassPalette.accent : GlassPalette.accent.opacity(0.10))
+            .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 }
 
