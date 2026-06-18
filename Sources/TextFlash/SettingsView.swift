@@ -301,90 +301,48 @@ private struct InfoPopoverButton: View {
 }
 
 private struct UnicodeAppsSettingsView: View {
+    var body: some View {
+        ManagedApplicationsSettingsView(configuration: .unicodeInput)
+    }
+}
+
+private struct ExcludedAppsSettingsView: View {
+    var body: some View {
+        ManagedApplicationsSettingsView(configuration: .exclusions)
+    }
+}
+
+private struct ManagedApplicationsSettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var settings = AppSettings.shared
-    @State private var bundleIDs = Array(EventController.shared.unicodeBundleIDs).sorted()
+    let configuration: ManagedApplicationsConfiguration
+    @State private var bundleIDs: [String]
     @State private var errorMessage: String?
 
+    init(configuration: ManagedApplicationsConfiguration) {
+        self.configuration = configuration
+        _bundleIDs = State(initialValue: configuration.bundleIDs.sorted())
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(L10n.t("unicodeApps.title"))
-                    .font(.headline)
-                Spacer()
-                Button {
-                    addCurrentApplication()
-                } label: {
-                    Image(systemName: "scope")
-                }
-                .buttonStyle(.plain)
-                .help(L10n.t("unicodeApps.addCurrent"))
+        ZStack {
+            SettingsPalette.window
+                .ignoresSafeArea()
 
-                Button {
-                    chooseApplication()
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .buttonStyle(.plain)
-                .help(L10n.t("unicodeApps.choose"))
+            VStack(spacing: 14) {
+                header
 
-                Button {
-                    clearAll()
-                } label: {
-                    Image(systemName: "trash")
-                }
-                .buttonStyle(.plain)
-                .disabled(bundleIDs.isEmpty)
-                .help(L10n.t("unicodeApps.clear"))
-
-                Button(L10n.t("common.done")) {
-                    dismiss()
-                }
+                content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .glassContainer(cornerRadius: 16)
             }
-            .padding()
-
-            Divider()
-
-            if bundleIDs.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "keyboard")
-                        .font(.system(size: 28))
-                        .foregroundColor(.secondary.opacity(0.5))
-                    Text(L10n.t("unicodeApps.empty"))
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List {
-                    ForEach(bundleIDs, id: \.self) { bundleID in
-                        HStack(spacing: 10) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(appName(for: bundleID))
-                                    .font(.body)
-                                Text(bundleID)
-                                    .font(.system(.caption, design: .monospaced))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer()
-                            Button {
-                                remove(bundleID)
-                            } label: {
-                                Image(systemName: "minus.circle")
-                            }
-                            .buttonStyle(.plain)
-                            .help(L10n.t("unicodeApps.remove"))
-                        }
-                    }
-                }
-            }
+            .padding(16)
         }
-        .frame(minWidth: 460, minHeight: 340)
-        .onReceive(NotificationCenter.default.publisher(for: .textFlashUnicodeAppsDidChange)) { _ in
+        .frame(width: 520, height: 420)
+        .preferredColorScheme(.light)
+        .onReceive(NotificationCenter.default.publisher(for: configuration.notificationName)) { _ in
             refresh()
         }
-        .alert(L10n.t("unicodeApps.addFailed.title"), isPresented: Binding(
+        .alert(L10n.t(configuration.addFailedTitleKey), isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
@@ -394,50 +352,171 @@ private struct UnicodeAppsSettingsView: View {
         }
     }
 
+    private var header: some View {
+        HStack(spacing: 12) {
+            Image(systemName: configuration.icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(SettingsPalette.accent)
+                .frame(width: 30, height: 30)
+                .background(SettingsPalette.accent.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            Text(L10n.t(configuration.titleKey))
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(SettingsPalette.primaryText)
+
+            Spacer()
+
+            HStack(spacing: 6) {
+                sheetIconButton("scope", help: L10n.t(configuration.addCurrentKey)) {
+                    addCurrentApplication()
+                }
+
+                sheetIconButton("plus", help: L10n.t(configuration.chooseKey)) {
+                    chooseApplication()
+                }
+
+                sheetIconButton("trash", help: L10n.t(configuration.clearKey), disabled: bundleIDs.isEmpty) {
+                    clearAll()
+                }
+
+                Button(L10n.t("common.done")) {
+                    dismiss()
+                }
+                .buttonStyle(SheetDoneButtonStyle())
+            }
+        }
+        .padding(14)
+        .glassContainer(cornerRadius: 14)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if bundleIDs.isEmpty {
+            VStack(spacing: 10) {
+                Image(systemName: configuration.emptyIcon)
+                    .font(.system(size: 30, weight: .light))
+                    .foregroundColor(SettingsPalette.mutedText.opacity(0.55))
+                Text(L10n.t(configuration.emptyKey))
+                    .font(.system(size: 13))
+                    .foregroundColor(SettingsPalette.secondaryText)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    ForEach(bundleIDs, id: \.self) { bundleID in
+                        appRow(bundleID)
+                    }
+                }
+                .padding(10)
+            }
+        }
+    }
+
+    private func appRow(_ bundleID: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: configuration.rowIcon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(SettingsPalette.accent)
+                .frame(width: 28, height: 28)
+                .background(SettingsPalette.accent.opacity(0.10))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(appName(for: bundleID))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(SettingsPalette.primaryText)
+                Text(bundleID)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(SettingsPalette.mutedText)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button {
+                remove(bundleID)
+            } label: {
+                Image(systemName: "minus.circle")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(SettingsPalette.warning)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .help(L10n.t(configuration.removeKey))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(SettingsPalette.field)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(SettingsPalette.border))
+    }
+
+    private func sheetIconButton(
+        _ symbol: String,
+        help: String,
+        disabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(disabled ? SettingsPalette.mutedText.opacity(0.55) : SettingsPalette.secondaryText)
+                .frame(width: 30, height: 30)
+                .background(SettingsPalette.field)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(SettingsPalette.border))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .help(help)
+    }
+
     private func chooseApplication() {
         let panel = NSOpenPanel()
-        panel.title = L10n.t("unicodeApps.choose")
+        panel.title = L10n.t(configuration.chooseKey)
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
         panel.allowedContentTypes = [.applicationBundle]
 
         guard panel.runModal() == .OK else { return }
-        var values = EventController.shared.unicodeBundleIDs
+        var values = configuration.bundleIDs
         for url in panel.urls {
             if let bundleID = Bundle(url: url)?.bundleIdentifier {
                 values.insert(bundleID)
             }
         }
-        EventController.shared.unicodeBundleIDs = values
+        configuration.setBundleIDs(values)
         refresh()
     }
 
     private func addCurrentApplication() {
         guard let app = EventController.shared.exclusionTargetApplication() else {
-            errorMessage = L10n.t("unicodeApps.addFailed.message")
+            errorMessage = L10n.t(configuration.addFailedMessageKey)
             return
         }
-        var values = EventController.shared.unicodeBundleIDs
+        var values = configuration.bundleIDs
         values.insert(app.bundleID)
-        EventController.shared.unicodeBundleIDs = values
+        configuration.setBundleIDs(values)
         refresh()
     }
 
     private func remove(_ bundleID: String) {
-        var values = EventController.shared.unicodeBundleIDs
+        var values = configuration.bundleIDs
         values.remove(bundleID)
-        EventController.shared.unicodeBundleIDs = values
+        configuration.setBundleIDs(values)
         refresh()
     }
 
     private func clearAll() {
-        EventController.shared.unicodeBundleIDs = []
+        configuration.setBundleIDs([])
         refresh()
     }
 
     private func refresh() {
-        bundleIDs = Array(EventController.shared.unicodeBundleIDs).sorted()
+        bundleIDs = configuration.bundleIDs.sorted()
     }
 
     private func appName(for bundleID: String) -> String {
@@ -451,154 +530,120 @@ private struct UnicodeAppsSettingsView: View {
     }
 }
 
-private struct ExcludedAppsSettingsView: View {
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var settings = AppSettings.shared
-    @State private var bundleIDs = Array(EventController.shared.excludedBundleIDs).sorted()
-    @State private var errorMessage: String?
+private enum ManagedApplicationsConfiguration {
+    case unicodeInput
+    case exclusions
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(L10n.t("exclusions.title"))
-                    .font(.headline)
-                Spacer()
-                Button {
-                    addCurrentApplication()
-                } label: {
-                    Image(systemName: "scope")
-                }
-                .buttonStyle(.plain)
-                .help(L10n.t("exclusions.addCurrent"))
-
-                Button {
-                    chooseApplication()
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .buttonStyle(.plain)
-                .help(L10n.t("exclusions.choose"))
-
-                Button {
-                    clearAll()
-                } label: {
-                    Image(systemName: "trash")
-                }
-                .buttonStyle(.plain)
-                .disabled(bundleIDs.isEmpty)
-                .help(L10n.t("exclusions.clear"))
-
-                Button(L10n.t("common.done")) {
-                    dismiss()
-                }
-            }
-            .padding()
-
-            Divider()
-
-            if bundleIDs.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 28))
-                        .foregroundColor(.secondary.opacity(0.5))
-                    Text(L10n.t("exclusions.empty"))
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                List {
-                    ForEach(bundleIDs, id: \.self) { bundleID in
-                        HStack(spacing: 10) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(appName(for: bundleID))
-                                    .font(.body)
-                                Text(bundleID)
-                                    .font(.system(.caption, design: .monospaced))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer()
-                            Button {
-                                remove(bundleID)
-                            } label: {
-                                Image(systemName: "minus.circle")
-                            }
-                            .buttonStyle(.plain)
-                            .help(L10n.t("exclusions.remove"))
-                        }
-                    }
-                }
-            }
-        }
-        .frame(minWidth: 460, minHeight: 340)
-        .onReceive(NotificationCenter.default.publisher(for: .textFlashExclusionsDidChange)) { _ in
-            refresh()
-        }
-        .alert(L10n.t("exclusions.addFailed.title"), isPresented: Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
-        )) {
-            Button(L10n.t("common.confirm"), role: .cancel) { errorMessage = nil }
-        } message: {
-            Text(errorMessage ?? "")
+    var titleKey: String {
+        switch self {
+        case .unicodeInput: return "unicodeApps.title"
+        case .exclusions: return "exclusions.title"
         }
     }
 
-    private func chooseApplication() {
-        let panel = NSOpenPanel()
-        panel.title = L10n.t("exclusions.choose")
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = true
-        panel.allowedContentTypes = [.applicationBundle]
-
-        guard panel.runModal() == .OK else { return }
-        var values = EventController.shared.excludedBundleIDs
-        for url in panel.urls {
-            if let bundleID = Bundle(url: url)?.bundleIdentifier {
-                values.insert(bundleID)
-            }
+    var chooseKey: String {
+        switch self {
+        case .unicodeInput: return "unicodeApps.choose"
+        case .exclusions: return "exclusions.choose"
         }
-        EventController.shared.excludedBundleIDs = values
-        refresh()
     }
 
-    private func addCurrentApplication() {
-        guard let app = EventController.shared.exclusionTargetApplication() else {
-            errorMessage = L10n.t("exclusions.addFailed.message")
-            return
+    var addCurrentKey: String {
+        switch self {
+        case .unicodeInput: return "unicodeApps.addCurrent"
+        case .exclusions: return "exclusions.addCurrent"
         }
-        var values = EventController.shared.excludedBundleIDs
-        values.insert(app.bundleID)
-        EventController.shared.excludedBundleIDs = values
-        refresh()
     }
 
-    private func remove(_ bundleID: String) {
-        var values = EventController.shared.excludedBundleIDs
-        values.remove(bundleID)
-        EventController.shared.excludedBundleIDs = values
-        refresh()
-    }
-
-    private func clearAll() {
-        EventController.shared.excludedBundleIDs = []
-        refresh()
-    }
-
-    private func refresh() {
-        bundleIDs = Array(EventController.shared.excludedBundleIDs).sorted()
-    }
-
-    private func appName(for bundleID: String) -> String {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID),
-              let bundle = Bundle(url: url) else {
-            return bundleID
+    var clearKey: String {
+        switch self {
+        case .unicodeInput: return "unicodeApps.clear"
+        case .exclusions: return "exclusions.clear"
         }
-        return bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
-            ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
-            ?? url.deletingPathExtension().lastPathComponent
+    }
+
+    var emptyKey: String {
+        switch self {
+        case .unicodeInput: return "unicodeApps.empty"
+        case .exclusions: return "exclusions.empty"
+        }
+    }
+
+    var removeKey: String {
+        switch self {
+        case .unicodeInput: return "unicodeApps.remove"
+        case .exclusions: return "exclusions.remove"
+        }
+    }
+
+    var addFailedTitleKey: String {
+        switch self {
+        case .unicodeInput: return "unicodeApps.addFailed.title"
+        case .exclusions: return "exclusions.addFailed.title"
+        }
+    }
+
+    var addFailedMessageKey: String {
+        switch self {
+        case .unicodeInput: return "unicodeApps.addFailed.message"
+        case .exclusions: return "exclusions.addFailed.message"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .unicodeInput: return "keyboard.badge.ellipsis"
+        case .exclusions: return "nosign.app"
+        }
+    }
+
+    var rowIcon: String {
+        switch self {
+        case .unicodeInput: return "keyboard"
+        case .exclusions: return "app.badge"
+        }
+    }
+
+    var emptyIcon: String {
+        switch self {
+        case .unicodeInput: return "keyboard"
+        case .exclusions: return "checkmark.circle"
+        }
+    }
+
+    var notificationName: Notification.Name {
+        switch self {
+        case .unicodeInput: return .textFlashUnicodeAppsDidChange
+        case .exclusions: return .textFlashExclusionsDidChange
+        }
+    }
+
+    var bundleIDs: Set<String> {
+        switch self {
+        case .unicodeInput: return EventController.shared.unicodeBundleIDs
+        case .exclusions: return EventController.shared.excludedBundleIDs
+        }
+    }
+
+    func setBundleIDs(_ bundleIDs: Set<String>) {
+        switch self {
+        case .unicodeInput:
+            EventController.shared.unicodeBundleIDs = bundleIDs
+        case .exclusions:
+            EventController.shared.excludedBundleIDs = bundleIDs
+        }
+    }
+}
+
+private struct SheetDoneButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 8)
+            .background(SettingsPalette.accent.opacity(configuration.isPressed ? 0.82 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 9))
     }
 }
 
@@ -669,17 +714,16 @@ private struct SettingsSection<Accessory: View>: View {
 }
 
 private enum SettingsPalette {
-    static let window = Color(red: 0.965, green: 0.960, blue: 0.985)
-    static let glass = Color.white.opacity(0.68)
-    static let field = Color.white.opacity(0.74)
-    static let surface = Color.white.opacity(0.58)
-    static let border = Color(red: 0.60, green: 0.56, blue: 0.72).opacity(0.20)
-    static let accent = Color(red: 0.42, green: 0.38, blue: 0.82)
-    static let warning = Color(red: 0.78, green: 0.48, blue: 0.16)
-    static let success = Color(red: 0.18, green: 0.58, blue: 0.43)
-    static let primaryText = Color(red: 0.12, green: 0.115, blue: 0.16)
-    static let secondaryText = Color(red: 0.39, green: 0.37, blue: 0.47)
-    static let mutedText = Color(red: 0.56, green: 0.53, blue: 0.62)
+    static let window = SoftTheme.window
+    static let glass = SoftTheme.glass
+    static let field = SoftTheme.field
+    static let border = SoftTheme.border
+    static let accent = SoftTheme.accent
+    static let warning = SoftTheme.warning
+    static let success = SoftTheme.success
+    static let primaryText = SoftTheme.primaryText
+    static let secondaryText = SoftTheme.secondaryText
+    static let mutedText = SoftTheme.mutedText
 }
 
 private extension View {
@@ -688,7 +732,7 @@ private extension View {
             .background(SettingsPalette.glass)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
             .overlay(RoundedRectangle(cornerRadius: cornerRadius).stroke(SettingsPalette.border))
-            .shadow(color: Color(red: 0.42, green: 0.36, blue: 0.62).opacity(0.08), radius: 18, x: 0, y: 10)
+            .shadow(color: SoftTheme.shadow, radius: 18, x: 0, y: 10)
     }
 }
 

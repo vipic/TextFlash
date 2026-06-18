@@ -138,18 +138,6 @@ public final class EventController {
         start()
     }
 
-    public func toggleExclusionForFocusedApplication() -> FocusedApplicationInfo? {
-        guard let app = exclusionTargetApplication() else { return nil }
-        var exclusions = excludedBundleIDs
-        if exclusions.contains(app.bundleID) {
-            exclusions.remove(app.bundleID)
-        } else {
-            exclusions.insert(app.bundleID)
-        }
-        excludedBundleIDs = exclusions
-        return app
-    }
-
     /// 添加一条文本缩写
     public func addSnippet(_ abbreviation: String, expansion: String) {
         guard !abbreviation.isEmpty, !expansion.isEmpty else { return }

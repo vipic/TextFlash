@@ -5,7 +5,6 @@ import AppKit
 
 struct SnippetManagerView: View {
     @ObservedObject var manager: SnippetManager
-    @ObservedObject private var settings = AppSettings.shared
     @State private var hasAccessibilityPermission = EventController.shared.checkPermission()
     @State private var groupNameInput: String = ""
     @State private var showNewGroupAlert = false
@@ -627,17 +626,16 @@ struct SnippetManagerView: View {
 // MARK: - Soft Glass Components
 
 private enum GlassPalette {
-    static let window = Color(red: 0.965, green: 0.960, blue: 0.985)
-    static let glass = Color.white.opacity(0.68)
-    static let field = Color.white.opacity(0.74)
-    static let surface = Color.white.opacity(0.58)
-    static let border = Color(red: 0.60, green: 0.56, blue: 0.72).opacity(0.20)
-    static let accent = Color(red: 0.42, green: 0.38, blue: 0.82)
-    static let accentSoft = Color(red: 0.58, green: 0.52, blue: 0.92).opacity(0.16)
-    static let warning = Color(red: 0.78, green: 0.48, blue: 0.16)
-    static let primaryText = Color(red: 0.12, green: 0.115, blue: 0.16)
-    static let secondaryText = Color(red: 0.39, green: 0.37, blue: 0.47)
-    static let mutedText = Color(red: 0.56, green: 0.53, blue: 0.62)
+    static let window = SoftTheme.window
+    static let glass = SoftTheme.glass
+    static let field = SoftTheme.field
+    static let border = SoftTheme.border
+    static let accent = SoftTheme.accent
+    static let accentSoft = SoftTheme.accentSoft
+    static let warning = SoftTheme.warning
+    static let primaryText = SoftTheme.primaryText
+    static let secondaryText = SoftTheme.secondaryText
+    static let mutedText = SoftTheme.mutedText
 }
 
 private extension View {
@@ -650,7 +648,7 @@ private extension View {
     }
 
     func softShadow() -> some View {
-        shadow(color: Color(red: 0.42, green: 0.36, blue: 0.62).opacity(0.08), radius: 18, x: 0, y: 10)
+        shadow(color: SoftTheme.shadow, radius: 18, x: 0, y: 10)
     }
 }
 
@@ -687,22 +685,6 @@ private struct GroupIcon: View {
             .frame(width: 18, height: 18)
             .background(selected ? GlassPalette.accent : GlassPalette.accent.opacity(0.10))
             .clipShape(RoundedRectangle(cornerRadius: 5))
-    }
-}
-
-private struct StatusPill: View {
-    let text: String
-    let color: Color
-
-    var body: some View {
-        Text(text)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(color)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(color.opacity(0.10))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(color.opacity(0.18)))
     }
 }
 

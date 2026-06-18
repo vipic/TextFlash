@@ -8,14 +8,7 @@
 
 "window.snippets" = "TextFlash — Snippets";
 "window.settings" = "TextFlash — Settings";
-"window.exclusions" = "TextFlash — Exclusions";
 "window.debug" = "TextFlash — Debug Panel";
-
-"alert.permission.enabled.title" = "Accessibility Permission Enabled";
-"alert.permission.enabled.message" = "TextFlash can monitor keyboard events and expand text.";
-"permission.authorized.title" = "Already Authorized";
-"alert.focusedApp.missing.title" = "Cannot Identify Current App";
-"alert.focusedApp.missing.message" = "Switch back to the target app, then try again.";
 
 "settings.title" = "Settings";
 "settings.subtitle" = "Adjust TextFlash language, permissions, and app behavior.";
@@ -71,11 +64,6 @@
 "common.rename" = "Rename";
 "common.save" = "Save";
 "common.done" = "Done";
-
-"permission.request.title" = "Accessibility Permission Required";
-"permission.request.message" = "Text expansion needs Accessibility permission to monitor keyboard events and insert text.\n\nEnable this app in System Settings → Privacy & Security → Accessibility.";
-"permission.request.open" = "Open System Settings";
-"permission.request.later" = "Later";
 
 "snippets.group.new.title" = "New Group";
 "snippets.group.rename.title" = "Rename Group";
