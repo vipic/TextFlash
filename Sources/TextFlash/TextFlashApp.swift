@@ -456,15 +456,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func textFlashStatusIcon() -> NSImage {
-        if let url = Bundle.module.url(forResource: "MenuBarIcon", withExtension: "png"),
+        if let image = bundledStatusIcon(extension: "svg") ?? bundledStatusIcon(extension: "png") {
+            return image
+        }
+
+        return fallbackStatusIcon()
+    }
+
+    private func bundledStatusIcon(extension fileExtension: String) -> NSImage? {
+        if let url = Bundle.module.url(forResource: "MenuBarIcon", withExtension: fileExtension),
            let image = NSImage(contentsOf: url) {
             image.size = NSSize(width: 18, height: 18)
             image.isTemplate = true
             image.accessibilityDescription = "TextFlash"
             return image
         }
-
-        return fallbackStatusIcon()
+        return nil
     }
 
     private func fallbackStatusIcon() -> NSImage {
