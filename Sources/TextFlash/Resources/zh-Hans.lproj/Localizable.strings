@@ -123,6 +123,10 @@
 "edit.variable.clipboard" = "剪贴板";
 "edit.variable.enter" = "回车";
 "edit.variable.tab" = "Tab";
+"syntax.variable.clipboard" = "剪贴板";
+"syntax.variable.enter" = "↵ 换行";
+"syntax.variable.cursor" = "▎光标";
+"syntax.variable.datetime" = "日期时间";
 "edit.expandedText" = "展开文本";
 "edit.characterCount" = "%d 字符";
 "edit.description" = "描述";

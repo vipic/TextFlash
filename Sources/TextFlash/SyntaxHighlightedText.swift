@@ -91,14 +91,14 @@ struct SyntaxHighlightedText: View {
         return .plain
     }
 
-    /// 将变量转为中文标签
+    /// 将变量转为当前界面的标签
     private func variableTag(_ variable: String, kind: Segment.Kind) -> String {
         switch kind {
-        case .clipboard: return "剪贴板"
-        case .enter: return "↵ 换行"
+        case .clipboard: return L10n.t("syntax.variable.clipboard")
+        case .enter: return L10n.t("syntax.variable.enter")
         case .tab: return "⇥ Tab"
-        case .cursor: return "▎光标"
-        case .datetime: return "日期时间"
+        case .cursor: return L10n.t("syntax.variable.cursor")
+        case .datetime: return L10n.t("syntax.variable.datetime")
         case .plain: return "{\(variable)}"
         }
     }
