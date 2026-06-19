@@ -114,15 +114,16 @@ final class UpdateChecker {
         let script = UpdateInstallScriptBuilder.script(
             stableDMGPath: stableDMG.path,
             targetPath: Bundle.main.bundlePath,
-            expectedVersion: Self.displayVersion(expectedVersion)
+            expectedVersion: Self.displayVersion(expectedVersion),
+            currentPID: ProcessInfo.processInfo.processIdentifier
         )
 
         try script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptPath)
 
         let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/bash")
-        task.arguments = [scriptPath]
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/nohup")
+        task.arguments = ["/bin/bash", scriptPath]
         try task.run()
 
         NSApp.terminate(nil)

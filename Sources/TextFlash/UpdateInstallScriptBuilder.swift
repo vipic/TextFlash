@@ -1,7 +1,7 @@
 import Foundation
 
 enum UpdateInstallScriptBuilder {
-    static func script(stableDMGPath: String, targetPath: String, expectedVersion: String) -> String {
+    static func script(stableDMGPath: String, targetPath: String, expectedVersion: String, currentPID: Int32) -> String {
         """
         #!/bin/bash
         set -e
@@ -9,16 +9,27 @@ enum UpdateInstallScriptBuilder {
         DMG="\(stableDMGPath)"
         TARGET="\(targetPath)"
         EXPECTED_VERSION="\(expectedVersion)"
+        CURRENT_PID="\(currentPID)"
         LOG="/tmp/textflash_update.log"
         exec >> "$LOG" 2>&1
-        sleep 1
         echo "TextFlash update started at $(date)"
         echo "Target: $TARGET"
         echo "Expected version: $EXPECTED_VERSION"
+        echo "Waiting for current process to exit: $CURRENT_PID"
+        for _ in $(seq 1 100); do
+            if ! kill -0 "$CURRENT_PID" 2>/dev/null; then
+                break
+            fi
+            sleep 0.1
+        done
+        if kill -0 "$CURRENT_PID" 2>/dev/null; then
+            echo "旧进程仍未退出，继续尝试安装"
+        fi
         TARGET_PARENT=$(dirname "$TARGET")
         TARGET_NAME=$(basename "$TARGET")
         BACKUP="$TARGET_PARENT/.${TARGET_NAME}.update-backup-$(date +%s)"
 
+        echo "Mounting DMG..."
         MOUNT_OUTPUT=$(hdiutil attach -noverify -noautoopen -nobrowse "$DMG" 2>&1)
         VOLUME=$(echo "$MOUNT_OUTPUT" | grep '/Volumes/' | tail -1 | awk -F'\\t' '{print $NF}')
 
@@ -63,6 +74,7 @@ enum UpdateInstallScriptBuilder {
             echo "更新包签名身份与当前 App 不匹配，继续安装；系统权限可能需要重新授权" >&2
         fi
 
+        echo "Replacing app..."
         mv "$TARGET" "$BACKUP"
         if ! cp -R "$CANDIDATE" "$TARGET"; then
             echo "更新包复制失败，已恢复旧版本" >&2
@@ -84,9 +96,12 @@ enum UpdateInstallScriptBuilder {
         fi
         rm -rf "$BACKUP"
 
+        echo "Detaching DMG..."
         hdiutil detach "$VOLUME" -quiet
         rm -f "$DMG" "$0"
+        echo "Launching updated app..."
         open "$TARGET"
+        echo "TextFlash update finished at $(date)"
         """
     }
 }
