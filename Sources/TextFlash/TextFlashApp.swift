@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // LSUIElement：隐藏 Dock 图标
         NSApp.setActivationPolicy(.accessory)
+        setupApplicationMenu()
 
         setupMenuBar()
         loadSnippetsIntoController()
@@ -74,6 +75,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateMenuState()
     }
 
+    private func setupApplicationMenu() {
+        let mainMenu = NSMenu()
+
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu(title: "TextFlash")
+        appMenu.addItem(NSMenuItem(title: L10n.t("menu.openSnippets"), action: #selector(openSnippetWindow), keyEquivalent: ""))
+        appMenu.addItem(NSMenuItem(title: L10n.t("menu.settings"), action: #selector(openSettingsWindow), keyEquivalent: ","))
+        appMenu.addItem(.separator())
+        appMenu.addItem(NSMenuItem(title: L10n.t("menu.checkUpdates"), action: #selector(showUpdateWindow), keyEquivalent: ""))
+        appMenu.addItem(NSMenuItem(title: L10n.t("menu.about"), action: #selector(showAbout), keyEquivalent: ""))
+        appMenu.addItem(.separator())
+        appMenu.addItem(NSMenuItem(title: L10n.t("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+
+        let windowMenuItem = NSMenuItem()
+        let windowMenu = NSMenu(title: L10n.t("menu.window"))
+        windowMenu.addItem(NSMenuItem(title: L10n.t("menu.closeWindow"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
+        windowMenuItem.submenu = windowMenu
+        mainMenu.addItem(windowMenuItem)
+        NSApp.windowsMenu = windowMenu
+
+        NSApp.mainMenu = mainMenu
+    }
+
+    private func presentWindow(_ window: NSWindow) {
+        if NSApp.activationPolicy() != .regular {
+            NSApp.setActivationPolicy(.regular)
+        }
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func restoreAccessoryModeIfNoManagedWindows() {
+        var managedWindows: [NSWindow?] = [
+            snippetWindow,
+            settingsWindow,
+            aboutWindow,
+            updateWindow
+        ]
+#if DEBUG
+        managedWindows.append(debugWindow)
+#endif
+        let hasOpenWindow = managedWindows.contains { window in
+            guard let window else { return false }
+            return window.isVisible || window.isMiniaturized
+        }
+        if !hasOpenWindow, NSApp.activationPolicy() != .accessory {
+            NSApp.setActivationPolicy(.accessory)
+        }
+    }
+
     // MARK: - 片段窗口
 
     @MainActor @objc private func openSnippetWindow() {
@@ -81,8 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         EventController.shared.start()
 
         if let existing = snippetWindow {
-            existing.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            presentWindow(existing)
             return
         }
 
@@ -116,11 +168,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.snippetWindow = nil
+                self?.restoreAccessoryModeIfNoManagedWindows()
             }
         }
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        presentWindow(window)
         snippetWindow = window
     }
 
@@ -139,8 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor @objc private func openSettingsWindow() {
         if let existing = settingsWindow {
-            existing.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            presentWindow(existing)
             return
         }
 
@@ -167,18 +218,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.settingsWindow = nil
+                self?.restoreAccessoryModeIfNoManagedWindows()
             }
         }
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        presentWindow(window)
         settingsWindow = window
     }
 
     @MainActor @objc private func showAbout() {
         if let existing = aboutWindow {
-            existing.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            presentWindow(existing)
             return
         }
 
@@ -205,18 +255,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.aboutWindow = nil
+                self?.restoreAccessoryModeIfNoManagedWindows()
             }
         }
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        presentWindow(window)
         aboutWindow = window
     }
 
     @MainActor @objc private func showUpdateWindow() {
         if let existing = updateWindow {
-            existing.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            presentWindow(existing)
             return
         }
 
@@ -249,11 +298,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.updateWindow = nil
+                self?.restoreAccessoryModeIfNoManagedWindows()
             }
         }
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        presentWindow(window)
         updateWindow = window
 
         Task { @MainActor in
@@ -378,8 +427,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #if DEBUG
     @MainActor @objc private func openDebugWindow() {
         if let existing = debugWindow {
-            existing.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            presentWindow(existing)
             return
         }
 
@@ -406,11 +454,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.debugWindow = nil
+                self?.restoreAccessoryModeIfNoManagedWindows()
             }
         }
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        presentWindow(window)
         debugWindow = window
     }
 #endif
@@ -435,6 +483,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func languageDidChange(_ notification: Notification) {
+        setupApplicationMenu()
         setupMenuBar()
         snippetWindow?.title = L10n.t("window.snippets")
         settingsWindow?.title = L10n.t("window.settings")

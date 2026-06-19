@@ -5,6 +5,8 @@
 "menu.checkUpdates" = "Check for Updates…";
 "menu.about" = "About TextFlash";
 "menu.quit" = "Quit TextFlash";
+"menu.window" = "Window";
+"menu.closeWindow" = "Close Window";
 
 "window.snippets" = "TextFlash — Snippets";
 "window.settings" = "TextFlash — Settings";

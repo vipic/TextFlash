@@ -5,6 +5,8 @@
 "menu.checkUpdates" = "检查更新…";
 "menu.about" = "关于 TextFlash";
 "menu.quit" = "退出 TextFlash";
+"menu.window" = "窗口";
+"menu.closeWindow" = "关闭窗口";
 
 "window.snippets" = "TextFlash — 片段管理";
 "window.settings" = "TextFlash — 设置";
