@@ -1,0 +1,26 @@
+[tasks.build]
+description = "Build TextFlash for local development"
+run = "swift build -Xswiftc -DDISABLE_PREVIEWS"
+
+[tasks.test]
+description = "Run the Swift test suite"
+run = "swift test -Xswiftc -DDISABLE_PREVIEWS"
+
+[tasks.release-build]
+description = "Build TextFlash in release configuration"
+run = "swift build -c release -Xswiftc -DDISABLE_PREVIEWS"
+
+[tasks.ci]
+description = "Run the local CI checks"
+run = [
+  "swift test -Xswiftc -DDISABLE_PREVIEWS",
+  "swift build -c release -Xswiftc -DDISABLE_PREVIEWS",
+]
+
+[tasks.deploy]
+description = "Deploy the debug app to ~/Applications/TextFlash Dev.app"
+run = "./deploy.sh"
+
+[tasks.release]
+description = "Build the release DMG"
+run = "./release.sh"

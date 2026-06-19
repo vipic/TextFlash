@@ -7,19 +7,25 @@ TextFlash 是一款 macOS 菜单栏文本展开工具，基于 SwiftUI 和 SQLit
 运行测试：
 
 ```bash
-swift test
+mise run test
 ```
 
 本地构建：
 
 ```bash
-swift build
+mise run build
 ```
 
 部署开发版应用到 `~/Applications/TextFlash Dev.app`：
 
 ```bash
-./deploy.sh
+mise run deploy
+```
+
+也可以查看所有项目任务：
+
+```bash
+mise tasks
 ```
 
 文本展开需要 macOS 辅助功能权限。如果无法触发展开，请通过菜单栏检查权限状态。
@@ -49,7 +55,7 @@ CI 会在 macOS 上运行 shell 脚本语法检查、`swift test` 和 `swift bui
 构建 DMG：
 
 ```bash
-./release.sh 0.1.0
+mise run release -- 0.1.0
 ```
 
 发布产物会写入 `dist/`，避免多个版本的 DMG 堆在项目根目录。
@@ -57,7 +63,7 @@ CI 会在 macOS 上运行 shell 脚本语法检查、`swift test` 和 `swift bui
 默认运行测试。跳过测试仅打包查看：
 
 ```bash
-RUN_TESTS=false ./release.sh 0.1.0
+RUN_TESTS=false mise run release -- 0.1.0
 ```
 
 发布需要 Developer ID 签名和公证：
@@ -68,7 +74,7 @@ NOTARIZE=true \
 APPLE_ID="you@example.com" \
 APPLE_TEAM_ID="TEAMID" \
 APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx" \
-./release.sh 0.1.0 --publish
+mise run release -- 0.1.0 --publish
 ```
 
 `--publish` 需要 Git 工作区干净，脚本会推送当前 `HEAD` 和发布 tag。
