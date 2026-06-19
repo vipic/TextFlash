@@ -2,19 +2,24 @@
 description = "Build TextFlash for local development"
 run = "swift build -Xswiftc -DDISABLE_PREVIEWS"
 
+[tasks."build:release"]
+description = "Build TextFlash in release configuration"
+run = "swift build -c release -Xswiftc -DDISABLE_PREVIEWS"
+
 [tasks.test]
 description = "Run the Swift test suite"
 run = "swift test -Xswiftc -DDISABLE_PREVIEWS"
 
-[tasks.release-build]
-description = "Build TextFlash in release configuration"
-run = "swift build -c release -Xswiftc -DDISABLE_PREVIEWS"
+[tasks."lint:scripts"]
+description = "Check shell scripts for syntax errors"
+run = "bash -n deploy.sh && bash -n release.sh && bash -n scripts/next_version.sh && bash -n .mise/tasks/release && bash -n .mise/tasks/release-auto && bash -n .mise/tasks/publish"
 
 [tasks.ci]
 description = "Run the local CI checks"
 run = [
-  "swift test -Xswiftc -DDISABLE_PREVIEWS",
-  "swift build -c release -Xswiftc -DDISABLE_PREVIEWS",
+  "mise run lint:scripts",
+  "mise run test",
+  "mise run build:release",
 ]
 
 [tasks.deploy]
@@ -22,5 +27,21 @@ description = "Deploy the debug app to ~/Applications/TextFlash Dev.app"
 run = "./deploy.sh"
 
 [tasks.release]
-description = "Build the release DMG"
-run = "./release.sh"
+description = "Run release.sh with an explicit version; pass version and flags after --"
+run = ".mise/tasks/release"
+
+[tasks."release-auto"]
+description = "Calculate the next version, then run release.sh"
+run = ".mise/tasks/release-auto"
+
+[tasks.publish]
+description = "Publish a GitHub Release; pass a version after -- or omit it to auto-bump"
+run = ".mise/tasks/publish"
+
+[tasks."version:current"]
+description = "Print the highest SemVer release tag version"
+run = "scripts/next_version.sh --current"
+
+[tasks."version:next"]
+description = "Calculate the next SemVer version from commits since the latest tag"
+run = "scripts/next_version.sh"

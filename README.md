@@ -28,6 +28,14 @@ mise run deploy
 mise tasks
 ```
 
+完整 mise 命令速查见 [docs/MISE.md](docs/MISE.md)。常用入口：
+
+```bash
+mise run ci
+mise run deploy
+mise run release-auto
+```
+
 文本展开需要 macOS 辅助功能权限。如果无法触发展开，请通过菜单栏检查权限状态。
 
 CI 会在 macOS 上运行 shell 脚本语法检查、`swift test` 和 `swift build -c release`。重要变更详见 `CHANGELOG.md`。
@@ -56,6 +64,12 @@ CI 会在 macOS 上运行 shell 脚本语法检查、`swift test` 和 `swift bui
 
 ```bash
 mise run release -- 0.1.0
+```
+
+按 git message 自动计算下一个版本并构建 DMG：
+
+```bash
+mise run release-auto
 ```
 
 发布产物会写入 `dist/`，避免多个版本的 DMG 堆在项目根目录。

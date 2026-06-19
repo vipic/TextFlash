@@ -19,10 +19,16 @@ jobs:
         run: swift --version
 
       - name: Check shell scripts
-        run: bash -n deploy.sh release.sh
+        run: |
+          bash -n deploy.sh
+          bash -n release.sh
+          bash -n scripts/next_version.sh
+          bash -n .mise/tasks/release
+          bash -n .mise/tasks/release-auto
+          bash -n .mise/tasks/publish
 
       - name: Run tests
-        run: swift test
+        run: swift test -Xswiftc -DDISABLE_PREVIEWS
 
       - name: Build release
-        run: swift build -c release
+        run: swift build -c release -Xswiftc -DDISABLE_PREVIEWS

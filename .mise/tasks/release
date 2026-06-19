@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$#" -eq 0 ]]; then
+    cat >&2 <<'USAGE'
+Usage:
+  mise run release -- <version> [--force] [--publish]
+
+Examples:
+  mise run release -- 0.1.12
+  mise run release -- 0.1.12 --force
+  mise run release -- 0.1.12 --publish
+USAGE
+    exit 2
+fi
+
+exec ./release.sh "$@"
