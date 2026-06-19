@@ -515,15 +515,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func textFlashStatusIcon() -> NSImage {
-        if let image = bundledStatusIcon(extension: "svg") {
+        let resourceName = isDevBuild ? "MenuBarIconDev" : "MenuBarIcon"
+        if let image = bundledStatusIcon(named: resourceName, extension: "svg")
+            ?? bundledStatusIcon(named: "MenuBarIcon", extension: "svg") {
             return image
         }
 
         return fallbackStatusIcon()
     }
 
-    private func bundledStatusIcon(extension fileExtension: String) -> NSImage? {
-        if let url = Bundle.module.url(forResource: "MenuBarIcon", withExtension: fileExtension),
+    private func bundledStatusIcon(named name: String, extension fileExtension: String) -> NSImage? {
+        if let url = Bundle.module.url(forResource: name, withExtension: fileExtension),
            let image = NSImage(contentsOf: url) {
             image.size = NSSize(width: 18, height: 18)
             image.isTemplate = true
@@ -531,6 +533,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return image
         }
         return nil
+    }
+
+    private var isDevBuild: Bool {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let bundleID = Bundle.main.bundleIdentifier ?? ""
+        return version.contains("-dev") || bundleID.hasSuffix(".dev")
     }
 
     private func fallbackStatusIcon() -> NSImage {

@@ -18,13 +18,10 @@ struct SettingsView: View {
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 16) {
-                header
-                    .glassContainer(cornerRadius: 16)
+                headerBlock
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
-                        statusSummary
-
                         VStack(spacing: 10) {
                             languageSection
                             launchSection
@@ -76,7 +73,17 @@ struct SettingsView: View {
                     .foregroundColor(SettingsPalette.secondaryText)
             }
         }
+    }
+
+    private var headerBlock: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            header
+                .padding(0)
+
+            statusSummary
+        }
         .padding(16)
+        .glassContainer(cornerRadius: 16)
     }
 
     private var statusSummary: some View {

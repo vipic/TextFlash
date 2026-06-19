@@ -19,38 +19,44 @@ struct UpdateView: View {
     var onCancel: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 0) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 72, height: 72)
-                .padding(.top, 30)
-                .padding(.bottom, 14)
+        ZStack {
+            SoftTheme.window
+                .ignoresSafeArea()
 
-            headingRow
-                .padding(.bottom, 4)
+            VStack(spacing: 0) {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 68, height: 68)
+                    .padding(.top, 30)
+                    .padding(.bottom, 14)
 
-            versionRow
-                .padding(.bottom, 8)
+                headingRow
+                    .padding(.bottom, 5)
 
-            if case .upToDate(_, _, let lastCheck, _) = state, let date = lastCheck {
-                lastCheckedRow(date)
-                    .padding(.bottom, 16)
-            } else {
-                Color.clear.frame(height: 0)
-                    .padding(.bottom, 16)
+                versionRow
+                    .padding(.bottom, 8)
+
+                if case .upToDate(_, _, let lastCheck, _) = state, let date = lastCheck {
+                    lastCheckedRow(date)
+                        .padding(.bottom, 18)
+                } else {
+                    Color.clear.frame(height: 0)
+                        .padding(.bottom, 18)
+                }
+
+                if let releaseNotes, !releaseNotes.isEmpty {
+                    changelogSection(releaseNotes)
+                        .padding(.bottom, 24)
+                }
+
+                buttonRow
             }
-
-            if let releaseNotes, !releaseNotes.isEmpty {
-                changelogSection(releaseNotes)
-                    .padding(.bottom, 24)
-            }
-
-            buttonRow
+            .padding(.horizontal, 40)
+            .padding(.bottom, 28)
         }
-        .padding(.horizontal, 40)
-        .padding(.bottom, 28)
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
+        .preferredColorScheme(.light)
     }
 
     @ViewBuilder
@@ -60,9 +66,10 @@ struct UpdateView: View {
             case .upToDate:
                 Text(L10n.t("update.upToDate"))
                     .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(SoftTheme.primaryText)
                 ZStack {
                     Circle()
-                        .fill(Color(red: 0.188, green: 0.82, blue: 0.345))
+                        .fill(SoftTheme.success)
                         .frame(width: 18, height: 18)
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
@@ -71,19 +78,22 @@ struct UpdateView: View {
             case .updateAvailable, .downloading, .installing:
                 Text(L10n.t("update.available"))
                     .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(SoftTheme.primaryText)
                 Circle()
-                    .fill(Color(red: 0.188, green: 0.82, blue: 0.345))
+                    .fill(SoftTheme.accent)
                     .frame(width: 8, height: 8)
-                    .shadow(color: Color(red: 0.188, green: 0.82, blue: 0.345).opacity(0.5), radius: 6)
+                    .shadow(color: SoftTheme.accent.opacity(0.28), radius: 6)
             case .checking:
                 Text(L10n.t("update.checking"))
                     .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(SoftTheme.primaryText)
                 ProgressView()
                     .scaleEffect(0.7)
                     .frame(width: 18, height: 18)
             case .error:
                 Text(L10n.t("update.failed"))
                     .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(SoftTheme.primaryText)
             }
         }
     }
@@ -97,7 +107,7 @@ struct UpdateView: View {
 
         return Text(String(format: L10n.t("update.lastChecked"), relative))
             .font(.system(size: 12))
-            .foregroundColor(.secondary)
+            .foregroundColor(SoftTheme.secondaryText)
     }
 
     @ViewBuilder
@@ -106,7 +116,7 @@ struct UpdateView: View {
         case .upToDate(let version, let build, _, _):
             Text("\(L10n.t("update.current")) v\(UpdateChecker.displayVersion(version)) · Build \(build)")
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundColor(SoftTheme.secondaryText)
         case .updateAvailable(let result):
             versionTransition(current: result.currentVersion, latest: result.latestVersion)
         case .checking:
@@ -120,22 +130,24 @@ struct UpdateView: View {
         case .installing:
             Text(L10n.t("update.installingMessage"))
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundColor(SoftTheme.secondaryText)
         case .error(let message):
             Text(message)
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundColor(SoftTheme.secondaryText)
         }
     }
 
     private func versionTransition(current: String, latest: String) -> some View {
         HStack(spacing: 6) {
             Text("\(L10n.t("update.current")) v\(UpdateChecker.displayVersion(current))")
-                .foregroundColor(.secondary)
-            Text("->")
-                .foregroundColor(.secondary.opacity(0.5))
+                .foregroundColor(SoftTheme.secondaryText)
+            Image(systemName: "arrow.right")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(SoftTheme.mutedText)
             Text("\(L10n.t("update.latest")) v\(UpdateChecker.displayVersion(latest))")
                 .fontWeight(.medium)
+                .foregroundColor(SoftTheme.primaryText)
         }
         .font(.system(size: 13))
     }
@@ -148,29 +160,31 @@ struct UpdateView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(L10n.t("update.whatsNew"))
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(SoftTheme.mutedText)
                         .textCase(.uppercase)
 
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(items, id: \.self) { item in
                             HStack(alignment: .top, spacing: 10) {
                                 Circle()
-                                    .fill(Color.accentColor)
+                                    .fill(SoftTheme.accent)
                                     .frame(width: 6, height: 6)
                                     .padding(.top, 5)
                                 Text(item)
                                     .font(.system(size: 13))
+                                    .foregroundColor(SoftTheme.secondaryText)
                                     .lineSpacing(2)
                             }
                         }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.primary.opacity(0.04))
-                )
+                .padding(.top, 12)
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(SoftTheme.border)
+                        .frame(height: 1)
+                }
             }
         }
     }
@@ -191,11 +205,11 @@ struct UpdateView: View {
                     .keyboardShortcut(.defaultAction)
             }
         case .downloading:
-            VStack(spacing: 10) {
+            VStack(spacing: 12) {
                 progressBar
                 Text(L10n.t("update.downloading"))
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(SoftTheme.secondaryText)
                 HStack {
                     Spacer()
                     Button(L10n.t("update.cancel")) { onCancel?() }
@@ -219,10 +233,10 @@ struct UpdateView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.primary.opacity(0.1))
+                            .fill(SoftTheme.accentSoft)
                             .frame(height: 6)
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.accentColor)
+                            .fill(SoftTheme.accent)
                             .frame(width: geo.size.width * CGFloat(visibleProgress), height: 6)
                     }
                 }
@@ -230,7 +244,7 @@ struct UpdateView: View {
 
                 Text("\(Int(clampedProgress * 100))%")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(SoftTheme.secondaryText)
                     .monospacedDigit()
             }
         }
