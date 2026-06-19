@@ -56,19 +56,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: L10n.t("menu.openSnippets"), action: #selector(openSnippetWindow), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: L10n.t("menu.settings"), action: #selector(openSettingsWindow), keyEquivalent: ","))
-        menu.addItem(NSMenuItem(title: L10n.t("menu.unicode.addCurrent"), action: #selector(addCurrentAppToUnicodeInput), keyEquivalent: ""))
+        menu.addItem(appMenuItem(title: L10n.t("menu.openSnippets"), action: #selector(openSnippetWindow)))
+        menu.addItem(appMenuItem(title: L10n.t("menu.settings"), action: #selector(openSettingsWindow), keyEquivalent: ","))
+        menu.addItem(appMenuItem(title: L10n.t("menu.unicode.addCurrent"), action: #selector(addCurrentAppToUnicodeInput)))
 
 #if DEBUG
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: L10n.t("menu.debug"), action: #selector(openDebugWindow), keyEquivalent: ""))
+        menu.addItem(appMenuItem(title: L10n.t("menu.debug"), action: #selector(openDebugWindow)))
 #endif
         menu.addItem(.separator())
-        let updateItem = NSMenuItem(title: L10n.t("menu.checkUpdates"), action: #selector(showUpdateWindow), keyEquivalent: "")
+        let updateItem = appMenuItem(title: L10n.t("menu.checkUpdates"), action: #selector(showUpdateWindow))
         menu.addItem(updateItem)
         updateMenuItem = updateItem
-        menu.addItem(NSMenuItem(title: L10n.t("menu.about"), action: #selector(showAbout), keyEquivalent: ""))
+        menu.addItem(appMenuItem(title: L10n.t("menu.about"), action: #selector(showAbout)))
         menu.addItem(NSMenuItem(title: L10n.t("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         menu.delegate = self
         statusItem?.menu = menu
@@ -80,11 +80,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu(title: "TextFlash")
-        appMenu.addItem(NSMenuItem(title: L10n.t("menu.openSnippets"), action: #selector(openSnippetWindow), keyEquivalent: ""))
-        appMenu.addItem(NSMenuItem(title: L10n.t("menu.settings"), action: #selector(openSettingsWindow), keyEquivalent: ","))
+        appMenu.addItem(self.appMenuItem(title: L10n.t("menu.openSnippets"), action: #selector(openSnippetWindow)))
+        appMenu.addItem(self.appMenuItem(title: L10n.t("menu.settings"), action: #selector(openSettingsWindow), keyEquivalent: ","))
         appMenu.addItem(.separator())
-        appMenu.addItem(NSMenuItem(title: L10n.t("menu.checkUpdates"), action: #selector(showUpdateWindow), keyEquivalent: ""))
-        appMenu.addItem(NSMenuItem(title: L10n.t("menu.about"), action: #selector(showAbout), keyEquivalent: ""))
+        appMenu.addItem(self.appMenuItem(title: L10n.t("menu.checkUpdates"), action: #selector(showUpdateWindow)))
+        appMenu.addItem(self.appMenuItem(title: L10n.t("menu.about"), action: #selector(showAbout)))
         appMenu.addItem(.separator())
         appMenu.addItem(NSMenuItem(title: L10n.t("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         appMenuItem.submenu = appMenu
@@ -98,6 +98,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.windowsMenu = windowMenu
 
         NSApp.mainMenu = mainMenu
+    }
+
+    private func appMenuItem(title: String, action: Selector, keyEquivalent: String = "") -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: keyEquivalent)
+        item.target = self
+        return item
     }
 
     private func presentWindow(_ window: NSWindow) {
@@ -261,6 +267,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         presentWindow(window)
         aboutWindow = window
+    }
+
+    @MainActor func showAboutFromApplicationMenu() {
+        showAbout()
     }
 
     @MainActor @objc private func showUpdateWindow() {
@@ -572,6 +582,15 @@ struct TextFlashApp: App {
     var body: some Scene {
         Settings {
             SettingsView()
+        }
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button(L10n.t("menu.about")) {
+                    Task { @MainActor in
+                        appDelegate.showAboutFromApplicationMenu()
+                    }
+                }
+            }
         }
     }
 }
