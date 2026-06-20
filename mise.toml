@@ -12,7 +12,7 @@ run = "swift test -Xswiftc -DDISABLE_PREVIEWS"
 
 [tasks."lint:scripts"]
 description = "Check shell scripts for syntax errors"
-run = "bash -n deploy.sh && bash -n release.sh && bash -n scripts/next_version.sh && bash -n .mise/tasks/release && bash -n .mise/tasks/release-auto && bash -n .mise/tasks/publish"
+run = "bash -n deploy.sh && bash -n release.sh && bash -n scripts/next_version.sh && bash -n Sources/TextFlash/Resources/Tools/textflash-backup.sh && bash -n Sources/TextFlash/Resources/Tools/textflash-restore.sh && bash -n .mise/tasks/release && bash -n .mise/tasks/release-auto && bash -n .mise/tasks/publish"
 
 [tasks.ci]
 description = "Run the local CI checks"

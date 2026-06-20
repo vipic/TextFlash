@@ -45,6 +45,11 @@ if [ -d "$RESOURCE_BUNDLE" ]; then
     rm -rf "$RESOURCES_DIR/$(basename "$RESOURCE_BUNDLE")"
     cp -R "$RESOURCE_BUNDLE" "$RESOURCES_DIR/"
 fi
+if [ -d "$RESOURCE_DIR/Tools" ]; then
+    rm -rf "$RESOURCES_DIR/Tools"
+    cp -R "$RESOURCE_DIR/Tools" "$RESOURCES_DIR/Tools"
+    chmod +x "$RESOURCES_DIR/Tools/"*.sh
+fi
 echo "✅ .app bundle 已更新: $APP_DIR"
 
 DEPLOY_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "dev")

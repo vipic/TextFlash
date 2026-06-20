@@ -102,6 +102,11 @@ if [ -d "$RESOURCE_BUNDLE" ]; then
     cp -R "$RESOURCE_BUNDLE" "$STAGING/$APP_NAME.app/Contents/Resources/"
     echo "   🌐 $(basename "$RESOURCE_BUNDLE") → .app bundle"
 fi
+if [ -d "$RESOURCE_DIR/Tools" ]; then
+    cp -R "$RESOURCE_DIR/Tools" "$STAGING/$APP_NAME.app/Contents/Resources/Tools"
+    chmod +x "$STAGING/$APP_NAME.app/Contents/Resources/Tools/"*.sh
+    echo "   🧰 Tools → .app bundle"
+fi
 
 # ── 4. 去除符号 ──
 echo ""

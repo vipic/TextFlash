@@ -58,6 +58,17 @@ CI 会在 macOS 上运行 shell 脚本语法检查、`swift test` 和 `swift bui
 
 通过菜单栏可以暂停展开、排除当前应用、管理排除列表。排除列表按 bundle identifier 存储在 `UserDefaults` 中。
 
+## 命令行备份与恢复
+
+安装后的 app 内置了备份和恢复脚本，方便外部自动化调用：
+
+```bash
+"/Applications/TextFlash.app/Contents/Resources/Tools/textflash-backup.sh"
+"/Applications/TextFlash.app/Contents/Resources/Tools/textflash-restore.sh" --launch "$HOME/Backups/TextFlash/20260620-120000"
+```
+
+备份内容包含片段数据库和当前版本对应的偏好设置。登录项由 macOS 管理，恢复后需要在设置里重新确认。
+
 ## 发布
 
 构建 DMG：
