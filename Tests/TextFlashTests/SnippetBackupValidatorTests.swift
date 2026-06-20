@@ -121,3 +121,19 @@ import Testing
         try SnippetBackupValidator.validate(groups)
     }
 }
+
+@Test func backupValidatorNormalizesImportedWhitespace() throws {
+    let group = SnippetGroup(
+        name: " Work \n",
+        snippets: [
+            Snippet(abbreviation: " sig ", expandedText: " \nRegards", description: " note \n")
+        ]
+    )
+
+    let normalized = try SnippetBackupValidator.normalize([group])
+
+    #expect(normalized[0].name == "Work")
+    #expect(normalized[0].snippets[0].abbreviation == "sig")
+    #expect(normalized[0].snippets[0].expandedText == "Regards")
+    #expect(normalized[0].snippets[0].description == "note")
+}

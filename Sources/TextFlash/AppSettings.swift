@@ -2,6 +2,7 @@ import Foundation
 
 extension Notification.Name {
     static let textFlashLanguageDidChange = Notification.Name("TextFlashLanguageDidChange")
+    static let textFlashTriggerMatchingModeDidChange = Notification.Name("TextFlashTriggerMatchingModeDidChange")
 }
 
 enum AppLanguage: String, CaseIterable, Identifiable {
@@ -34,37 +35,64 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     }
 }
 
+enum TriggerMatchingMode: String, CaseIterable, Identifiable {
+    case anywhere
+    case boundary
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .anywhere:
+            return L10n.t("settings.triggerMode.anywhere")
+        case .boundary:
+            return L10n.t("settings.triggerMode.boundary")
+        }
+    }
+}
+
+enum AppSettingsKeys {
+    static let language = "TextFlashAppLanguage"
+    static let deletionDelay = "TextFlashDeletionSettleDelayPerCharacter"
+    static let triggerMatchingMode = "TextFlashTriggerMatchingMode"
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
-    private let languageKey = "TextFlashAppLanguage"
-    private let deletionDelayKey = "TextFlashDeletionSettleDelayPerCharacter"
-
     @Published var language: AppLanguage {
         didSet {
-            UserDefaults.standard.set(language.rawValue, forKey: languageKey)
+            UserDefaults.standard.set(language.rawValue, forKey: AppSettingsKeys.language)
             NotificationCenter.default.post(name: .textFlashLanguageDidChange, object: self)
         }
     }
     @Published var deletionSettleDelayPerCharacter: Double {
         didSet {
-            UserDefaults.standard.set(deletionSettleDelayPerCharacter, forKey: deletionDelayKey)
+            UserDefaults.standard.set(deletionSettleDelayPerCharacter, forKey: AppSettingsKeys.deletionDelay)
+        }
+    }
+    @Published var triggerMatchingMode: TriggerMatchingMode {
+        didSet {
+            UserDefaults.standard.set(triggerMatchingMode.rawValue, forKey: AppSettingsKeys.triggerMatchingMode)
+            NotificationCenter.default.post(name: .textFlashTriggerMatchingModeDidChange, object: self)
         }
     }
 
     private init() {
-        let stored = UserDefaults.standard.string(forKey: languageKey)
+        let stored = UserDefaults.standard.string(forKey: AppSettingsKeys.language)
         language = stored.flatMap(AppLanguage.init(rawValue:)) ?? .system
-        let storedDelay = UserDefaults.standard.object(forKey: deletionDelayKey) as? Double
+        let storedDelay = UserDefaults.standard.object(forKey: AppSettingsKeys.deletionDelay) as? Double
         deletionSettleDelayPerCharacter = storedDelay ?? 20
+        let storedTriggerMode = UserDefaults.standard.string(forKey: AppSettingsKeys.triggerMatchingMode)
+        triggerMatchingMode = storedTriggerMode.flatMap(TriggerMatchingMode.init(rawValue:)) ?? .anywhere
     }
 }
 
 enum L10n {
     /// 直接读 UserDefaults，避免 MainActor 依赖，非主线程也能安全调用
     private static var currentLanguageCode: String? {
-        let raw = UserDefaults.standard.string(forKey: "TextFlashAppLanguage")
+        let raw = UserDefaults.standard.string(forKey: AppSettingsKeys.language)
         return raw.flatMap(AppLanguage.init(rawValue:))?.localizationCode
     }
 

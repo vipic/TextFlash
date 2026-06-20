@@ -25,6 +25,7 @@ struct SettingsView: View {
                         VStack(spacing: 10) {
                             languageSection
                             launchSection
+                            triggerModeSection
                             timingSection
                             unicodeAppsSection
                             permissionSection
@@ -188,6 +189,44 @@ struct SettingsView: View {
                 }
             ))
             .toggleStyle(.switch)
+        }
+    }
+
+    private var triggerModeSection: some View {
+        SettingsSection(
+            icon: "text.word.spacing",
+            title: L10n.t("settings.triggerMode.title"),
+            subtitle: L10n.t("settings.triggerMode.subtitle")
+        ) {
+            Menu {
+                ForEach(TriggerMatchingMode.allCases) { mode in
+                    Button {
+                        settings.triggerMatchingMode = mode
+                    } label: {
+                        if settings.triggerMatchingMode == mode {
+                            Label(mode.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(mode.displayName)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Text(settings.triggerMatchingMode.displayName)
+                        .font(.system(size: 13, weight: .medium))
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(SettingsPalette.mutedText)
+                }
+                .foregroundColor(SettingsPalette.primaryText)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(SettingsPalette.glass)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(SettingsPalette.border))
+            }
+            .buttonStyle(.plain)
+            .frame(minWidth: 150, alignment: .trailing)
         }
     }
 

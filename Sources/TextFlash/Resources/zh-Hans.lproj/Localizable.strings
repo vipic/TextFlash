@@ -21,6 +21,10 @@
 "settings.launch.subtitle" = "登录 macOS 后自动启动 TextFlash。";
 "settings.launch.toggle" = "登录时打开";
 "settings.launch.failed.title" = "无法更新开机启动";
+"settings.triggerMode.title" = "触发边界";
+"settings.triggerMode.subtitle" = "控制缩写是否允许出现在普通词尾时触发。";
+"settings.triggerMode.anywhere" = "任意位置";
+"settings.triggerMode.boundary" = "仅词边界";
 "settings.permission.title" = "辅助功能权限";
 "settings.permission.enabled" = "已启用，文本展开可以正常监听键盘事件。";
 "settings.permission.disabled" = "未启用，文本展开不会生效。";
@@ -84,6 +88,7 @@
 "snippets.import.title" = "导入片段？";
 "snippets.import.confirm" = "导入并覆盖";
 "snippets.import.message" = "这会替换当前所有分组和片段。将导入 %d 个分组、%d 个片段。";
+"snippets.import.error.tooLarge" = "备份文件过大，请选择 2 MB 以内的 TextFlash JSON 备份。";
 "snippets.operation.failed" = "操作失败";
 "snippets.permission.banner" = "辅助功能权限未启用，文本展开不会生效。";
 "snippets.permission.open" = "打开系统设置";
@@ -114,6 +119,10 @@
 "edit.variable.clipboard" = "剪贴板";
 "edit.variable.enter" = "回车";
 "edit.variable.tab" = "Tab";
+"edit.variable.preview.title" = "变量预览";
+"edit.variable.preview.empty" = "预览为空";
+"edit.variable.preview.clipboard" = "剪贴板文本";
+"edit.variable.warning.emptyDateFormat" = "日期时间变量缺少格式，例如 {datetime:yyyy-MM-dd}。";
 "syntax.variable.clipboard" = "剪贴板";
 "syntax.variable.enter" = "↵ 回车";
 "syntax.variable.cursor" = "▎光标";

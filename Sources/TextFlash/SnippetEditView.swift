@@ -34,6 +34,17 @@ struct SnippetEditView: View {
         manager.abbreviationExists(trimmedAbbreviation, excluding: originalSnippet?.id)
     }
 
+    private var variablePreview: (text: String, diagnostics: [VariableProcessor.Diagnostic]) {
+        let processor = VariableProcessor(
+            clipboardProvider: { L10n.t("edit.variable.preview.clipboard") },
+            dateProvider: { Date() }
+        )
+        return (
+            processor.process(text: expandedText).processed,
+            processor.diagnostics(for: expandedText)
+        )
+    }
+
     var body: some View {
         ZStack {
             EditPalette.window
@@ -259,6 +270,37 @@ struct SnippetEditView: View {
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(EditPalette.border, lineWidth: 1)
                 )
+            variablePreviewBlock
+        }
+    }
+
+    private var variablePreviewBlock: some View {
+        let preview = variablePreview
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "eye")
+                    .font(.system(size: 11, weight: .medium))
+                Text(L10n.t("edit.variable.preview.title"))
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .foregroundColor(EditPalette.mutedText)
+
+            Text(preview.text.isEmpty ? L10n.t("edit.variable.preview.empty") : preview.text)
+                .font(.system(size: 12))
+                .foregroundColor(preview.text.isEmpty ? EditPalette.mutedText : EditPalette.secondaryText)
+                .lineLimit(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(EditPalette.field)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(EditPalette.border))
+
+            ForEach(Array(preview.diagnostics.enumerated()), id: \.offset) { _, diagnostic in
+                Text(diagnostic.localizedDescription)
+                    .font(.caption2)
+                    .foregroundColor(EditPalette.warning)
+            }
         }
     }
 

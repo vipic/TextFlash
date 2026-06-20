@@ -55,6 +55,7 @@ public final class EventController {
     var isInjecting = false
     /// Event tap 自动恢复次数（调试用）
     var tapRecoveryCount = 0
+    private let stateLock = NSRecursiveLock()
     private var lastNonTextFlashApplication: FocusedApplicationInfo?
     private var activationObserver: NSObjectProtocol?
     /// 前缀树
@@ -97,15 +98,24 @@ public final class EventController {
     /// 权限提示在用户交互时懒加载触发（打开片段窗口/添加片段时）。
     @discardableResult
     public func start() -> Bool {
-        guard !isRunning else { return true }
+        stateLock.lock()
+        if isRunning {
+            stateLock.unlock()
+            return true
+        }
+        stateLock.unlock()
         guard checkPermission() else {
             return false
         }
         guard setupEventTap() else {
+            stateLock.lock()
             isRunning = false
+            stateLock.unlock()
             return false
         }
+        stateLock.lock()
         isRunning = true
+        stateLock.unlock()
         return true
     }
 
@@ -119,6 +129,7 @@ public final class EventController {
 
     /// 停止监听并释放所有事件源
     public func stop() {
+        stateLock.lock(); defer { stateLock.unlock() }
         guard isRunning else { return }
         if let tap = eventTap {
             CFMachPortInvalidate(tap)
@@ -141,30 +152,35 @@ public final class EventController {
     /// 添加一条文本缩写
     public func addSnippet(_ abbreviation: String, expansion: String) {
         guard !abbreviation.isEmpty, !expansion.isEmpty else { return }
+        stateLock.lock(); defer { stateLock.unlock() }
         snippets[abbreviation] = expansion
         matcher.insert(abbreviation: abbreviation, expansion: expansion)
     }
 
     /// 移除一条文本缩写
     public func removeSnippet(_ abbreviation: String) {
+        stateLock.lock(); defer { stateLock.unlock() }
         snippets.removeValue(forKey: abbreviation)
         matcher.remove(abbreviation: abbreviation)
     }
 
     /// 清除所有缩写
     public func removeAllSnippets() {
+        stateLock.lock(); defer { stateLock.unlock() }
         snippets.removeAll()
         matcher.clear()
     }
 
     /// 已加载的缩写列表（调试用）
     var loadedAbbreviations: [String] {
-        Array(snippets.keys)
+        stateLock.lock(); defer { stateLock.unlock() }
+        return Array(snippets.keys)
     }
 
     /// 查询缩写的展开文本（调试用）
     func expansionFor(_ abbreviation: String) -> String? {
-        snippets[abbreviation]
+        stateLock.lock(); defer { stateLock.unlock() }
+        return snippets[abbreviation]
     }
 
     // MARK: - Permission
@@ -260,19 +276,14 @@ public final class EventController {
             return Unmanaged.passUnretained(event)
         }
 
-        let shouldConsume: Bool
-        if Thread.isMainThread {
-            shouldConsume = processKeyboardEvent(event)
-        } else {
-            shouldConsume = DispatchQueue.main.sync {
-                processKeyboardEvent(event)
-            }
-        }
+        stateLock.lock(); defer { stateLock.unlock() }
+        let shouldConsume = processKeyboardEvent(event)
 
         return shouldConsume ? nil : Unmanaged.passUnretained(event)
     }
 
     private func handleDisabledEventTap() {
+        stateLock.lock(); defer { stateLock.unlock() }
         inputBuffer = ""
         guard let tap = eventTap else {
             isRunning = false
@@ -341,6 +352,10 @@ public final class EventController {
             guard let match = matcher.match(in: inputBuffer) else {
                 return false
             }
+            guard shouldTrigger(match: match, in: inputBuffer) else {
+                inputBuffer = ""
+                return false
+            }
             guard !isFocusedElementSecure() else {
                 return false
             }
@@ -359,6 +374,10 @@ public final class EventController {
             inputBuffer = matcher.trimToPossibleSuffix(inputBuffer)
             return false
         }
+        guard shouldTrigger(match: match, in: inputBuffer) else {
+            inputBuffer = ""
+            return false
+        }
 
         // 即时触发时拦截最后一个按键，只删除已经进入目标应用的前缀。
         guard !isFocusedElementSecure() else {
@@ -373,6 +392,22 @@ public final class EventController {
         )
         inputBuffer = ""
         return true
+    }
+
+    private func shouldTrigger(match: SnippetMatch, in buffer: String) -> Bool {
+        let rawMode = UserDefaults.standard.string(forKey: AppSettingsKeys.triggerMatchingMode)
+        guard TriggerMatchingMode(rawValue: rawMode ?? "") == .boundary else {
+            return true
+        }
+        guard match.abbreviation.count < buffer.count else {
+            return true
+        }
+        guard let start = buffer.index(buffer.endIndex, offsetBy: -match.abbreviation.count, limitedBy: buffer.startIndex),
+              start > buffer.startIndex else {
+            return true
+        }
+        let previous = buffer[buffer.index(before: start)]
+        return !previous.isLetter && !previous.isNumber && previous != "_"
     }
 
     // MARK: - Trigger Handling
@@ -414,9 +449,7 @@ public final class EventController {
             }
 
             // Telegram 等应用会延迟处理退格事件；等待缩写删除落地后再写入，避免尾部被后续退格误删。
-            let delayPerCharacter = MainActor.assumeIsolated {
-                AppSettings.shared.deletionSettleDelayPerCharacter
-            }
+            let delayPerCharacter = UserDefaults.standard.object(forKey: AppSettingsKeys.deletionDelay) as? Double ?? 20
             let deleteSettleDelay = max(20, Int(Double(backspaceCount) * delayPerCharacter))
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(deleteSettleDelay)) { [weak self] in
                 guard let self = self else { return }
@@ -608,11 +641,13 @@ public final class EventController {
     }
 
     public func exclusionTargetApplication() -> FocusedApplicationInfo? {
+        stateLock.lock(); defer { stateLock.unlock() }
         refreshLastNonTextFlashApplication()
         return lastNonTextFlashApplication
     }
 
     private func refreshLastNonTextFlashApplication() {
+        stateLock.lock(); defer { stateLock.unlock() }
         guard let app = focusedApplicationInfo() ?? frontmostApplicationInfo(), !app.isTextFlash else { return }
         lastNonTextFlashApplication = app
     }
@@ -624,11 +659,14 @@ public final class EventController {
             queue: .main
         ) { [weak self] notification in
             guard
+                let self,
                 let runningApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                 let app = FocusedApplicationInfo(runningApp: runningApp),
                 !app.isTextFlash
             else { return }
-            self?.lastNonTextFlashApplication = app
+            self.stateLock.lock()
+            self.lastNonTextFlashApplication = app
+            self.stateLock.unlock()
         }
     }
 

@@ -14,6 +14,8 @@ struct SnippetManagerView: View {
     @State private var pendingSnippetDeletion: PendingSnippetDeletion?
     @State private var pendingImportedGroups: [SnippetGroup]?
     @State private var importExportError: String?
+    @State private var isImporting = false
+    private let maxImportFileSize = 2 * 1024 * 1024
 
     private struct PendingSnippetDeletion: Identifiable {
         let snippet: Snippet
@@ -175,6 +177,7 @@ struct SnippetManagerView: View {
                 toolbarIcon("square.and.arrow.down", help: L10n.t("snippets.toolbar.import")) {
                     importSnippets()
                 }
+                .disabled(isImporting)
                 toolbarIcon("square.and.arrow.up", help: L10n.t("snippets.toolbar.export")) {
                     exportSnippets()
                 }
@@ -657,11 +660,28 @@ struct SnippetManagerView: View {
         panel.canChooseDirectories = false
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            let data = try Data(contentsOf: url)
-            pendingImportedGroups = try manager.parseImportJSONData(data)
-        } catch {
-            importExportError = error.localizedDescription
+        guard !isImporting else { return }
+        isImporting = true
+        let maxSize = maxImportFileSize
+
+        Task {
+            do {
+                let groups = try await Task.detached(priority: .userInitiated) {
+                    let values = try url.resourceValues(forKeys: [.fileSizeKey])
+                    if let size = values.fileSize, size > maxSize {
+                        throw SnippetImportExportError.importFileTooLarge
+                    }
+                    let data = try Data(contentsOf: url)
+                    if data.count > maxSize {
+                        throw SnippetImportExportError.importFileTooLarge
+                    }
+                    return try SnippetBackupValidator.decodeImportData(data)
+                }.value
+                pendingImportedGroups = groups
+            } catch {
+                importExportError = error.localizedDescription
+            }
+            isImporting = false
         }
     }
 
