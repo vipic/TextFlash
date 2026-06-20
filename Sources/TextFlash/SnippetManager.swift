@@ -360,13 +360,11 @@ enum SnippetBackupValidator {
         }
 
         if let groups = try? decoder.decode([SnippetGroup].self, from: data) {
-            try validate(groups)
-            return groups
+            return try normalize(groups)
         }
 
         if let group = try? decoder.decode(SnippetGroup.self, from: data) {
-            try validate([group])
-            return [group]
+            return try normalize([group])
         }
 
         throw SnippetImportExportError.invalidBackup("无法识别的 JSON 格式")
@@ -374,8 +372,25 @@ enum SnippetBackupValidator {
 
     static func normalizedGroups(from backup: SnippetBackup) throws -> [SnippetGroup] {
         let groups = backup.groups.isEmpty ? [SnippetGroup(name: "通用")] : backup.groups
+        return try normalize(groups)
+    }
+
+    static func normalize(_ groups: [SnippetGroup]) throws -> [SnippetGroup] {
         try validate(groups)
-        return groups
+        return groups.map { group in
+            SnippetGroup(
+                id: group.id,
+                name: group.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                snippets: group.snippets.map { snippet in
+                    Snippet(
+                        id: snippet.id,
+                        abbreviation: snippet.abbreviation.trimmingCharacters(in: .whitespacesAndNewlines),
+                        expandedText: snippet.expandedText.trimmingLeadingWhitespaceAndNewlines(),
+                        description: snippet.description.trimmingCharacters(in: .whitespacesAndNewlines)
+                    )
+                }
+            )
+        }
     }
 
     static func validate(_ groups: [SnippetGroup]) throws {
@@ -408,6 +423,7 @@ enum SnippetBackupValidator {
 enum SnippetImportExportError: LocalizedError {
     case databaseWriteFailed
     case invalidBackup(String)
+    case importFileTooLarge
 
     var errorDescription: String? {
         switch self {
@@ -415,6 +431,8 @@ enum SnippetImportExportError: LocalizedError {
             return "写入数据库失败"
         case .invalidBackup(let message):
             return "备份文件无效：\(message)"
+        case .importFileTooLarge:
+            return L10n.t("snippets.import.error.tooLarge")
         }
     }
 }

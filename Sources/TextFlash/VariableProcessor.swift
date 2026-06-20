@@ -15,6 +15,17 @@ import AppKit
 /// - `\\` → 输出字面量 `\`
 /// - 未知/无法闭合的占位符保持原文不做替换
 public struct VariableProcessor {
+    enum Diagnostic: Equatable {
+        case emptyDateTimeFormat
+
+        var localizedDescription: String {
+            switch self {
+            case .emptyDateTimeFormat:
+                return L10n.t("edit.variable.warning.emptyDateFormat")
+            }
+        }
+    }
+
     private let clipboardProvider: () -> String?
     private let dateProvider: () -> Date
 
@@ -99,6 +110,35 @@ public struct VariableProcessor {
         return (result, cursorOffset)
     }
 
+    func diagnostics(for text: String) -> [Diagnostic] {
+        var diagnostics: [Diagnostic] = []
+        var index = text.startIndex
+
+        while index < text.endIndex {
+            if text[index] == "\\" {
+                index = text.index(after: index)
+                if index < text.endIndex {
+                    index = text.index(after: index)
+                }
+                continue
+            }
+
+            if text[index] == "{",
+               let closeIndex = findClosingBrace(in: text, from: text.index(after: index)) {
+                let content = String(text[text.index(after: index)..<closeIndex])
+                if isEmptyDateTimeFormat(content) {
+                    diagnostics.append(.emptyDateTimeFormat)
+                }
+                index = text.index(after: closeIndex)
+                continue
+            }
+
+            index = text.index(after: index)
+        }
+
+        return diagnostics
+    }
+
     // MARK: - Private
 
     /// 从 start 开始查找匹配的 `}`，用深度计数处理嵌套花括号
@@ -118,6 +158,17 @@ public struct VariableProcessor {
             index = text.index(after: index)
         }
         return nil
+    }
+
+    private func isEmptyDateTimeFormat(_ content: String) -> Bool {
+        let trimmed = content.trimmingCharacters(in: .whitespaces)
+        let datetimePrefix = "datetime"
+        guard trimmed.hasPrefix(datetimePrefix) else { return false }
+        let afterDatetime = trimmed.dropFirst(datetimePrefix.count)
+        guard let colonIndex = afterDatetime.firstIndex(of: ":") else { return false }
+        let format = String(afterDatetime[afterDatetime.index(after: colonIndex)...])
+            .trimmingCharacters(in: .whitespaces)
+        return format.isEmpty
     }
 
     private func resolveVariable(_ content: String, cursorPosition: Int) -> (replacement: String, offset: Int) {

@@ -111,19 +111,21 @@ final class UpdateChecker {
         try FileManager.default.moveItem(at: tempURL, to: stableDMG)
 
         let scriptPath = NSTemporaryDirectory() + "textflash_update.sh"
-        let script = UpdateInstallScriptBuilder.script(
-            stableDMGPath: stableDMG.path,
-            targetPath: Bundle.main.bundlePath,
-            expectedVersion: Self.displayVersion(expectedVersion),
-            currentPID: ProcessInfo.processInfo.processIdentifier
-        )
+        let script = UpdateInstallScriptBuilder.script()
 
         try script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptPath)
 
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/nohup")
-        task.arguments = ["/bin/bash", scriptPath]
+        task.arguments = [
+            "/bin/bash",
+            scriptPath,
+            stableDMG.path,
+            Bundle.main.bundlePath,
+            Self.displayVersion(expectedVersion),
+            String(ProcessInfo.processInfo.processIdentifier)
+        ]
         try task.run()
 
         NSApp.terminate(nil)
@@ -282,6 +284,10 @@ private final class StreamingDownloadDelegate: NSObject, URLSessionDataDelegate 
             return
         }
         guard didReceiveSuccessfulResponse, let fileURL else {
+            finish(with: UpdateChecker.UpdateError.downloadFailed)
+            return
+        }
+        if expectedSize > 0, totalBytesWritten != Int64(expectedSize) {
             finish(with: UpdateChecker.UpdateError.downloadFailed)
             return
         }

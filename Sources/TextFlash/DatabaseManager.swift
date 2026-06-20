@@ -97,13 +97,39 @@ final class DatabaseManager {
             );
         """)
         execute("CREATE INDEX IF NOT EXISTS idx_snippets_group ON snippets(group_id, sort_order);")
-        execute("CREATE INDEX IF NOT EXISTS idx_snippets_abbr ON snippets(abbreviation);")
+        execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_snippets_abbr_unique ON snippets(abbreviation);")
         print("[DatabaseManager] 数据库表初始化完成")
     }
 
     private func runMigrations() {
         let version = schemaVersion
         if version < 1 { schemaVersion = 1 }
+        if version < 2 {
+            migrateUniqueAbbreviations()
+            schemaVersion = 2
+        }
+    }
+
+    private func migrateUniqueAbbreviations() {
+        transaction {
+            guard execute("""
+                WITH ranked AS (
+                    SELECT
+                        rowid,
+                        abbreviation,
+                        ROW_NUMBER() OVER (PARTITION BY abbreviation ORDER BY rowid) AS duplicate_rank
+                    FROM snippets
+                )
+                UPDATE snippets
+                SET abbreviation = abbreviation || '__duplicate_' || rowid
+                WHERE rowid IN (
+                    SELECT rowid
+                    FROM ranked
+                    WHERE duplicate_rank > 1
+                );
+            """) else { return false }
+            return execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_snippets_abbr_unique ON snippets(abbreviation);")
+        }
     }
 
     private func lastError() -> String {

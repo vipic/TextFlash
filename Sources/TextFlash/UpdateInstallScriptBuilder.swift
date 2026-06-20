@@ -1,15 +1,19 @@
 import Foundation
 
 enum UpdateInstallScriptBuilder {
-    static func script(stableDMGPath: String, targetPath: String, expectedVersion: String, currentPID: Int32) -> String {
+    static func script() -> String {
         """
         #!/bin/bash
         set -e
+        if [ "$#" -ne 4 ]; then
+            echo "Usage: $0 dmg-path target-app expected-version current-pid" >&2
+            exit 2
+        fi
 
-        DMG="\(stableDMGPath)"
-        TARGET="\(targetPath)"
-        EXPECTED_VERSION="\(expectedVersion)"
-        CURRENT_PID="\(currentPID)"
+        DMG="$1"
+        TARGET="$2"
+        EXPECTED_VERSION="$3"
+        CURRENT_PID="$4"
         LOG="/tmp/textflash_update.log"
         exec >> "$LOG" 2>&1
         echo "TextFlash update started at $(date)"
@@ -71,7 +75,10 @@ enum UpdateInstallScriptBuilder {
 
         CURRENT_REQ=$(/usr/bin/codesign -dr - "$TARGET" 2>&1 | sed -n 's/^.*designated => //p')
         if [ -n "$CURRENT_REQ" ] && ! /usr/bin/codesign --verify --deep --strict -R="designated => $CURRENT_REQ" "$CANDIDATE" 2>/dev/null; then
-            echo "更新包签名身份与当前 App 不匹配，继续安装；系统权限可能需要重新授权" >&2
+            echo "更新包签名身份与当前 App 不匹配，拒绝自动更新" >&2
+            hdiutil detach "$VOLUME" -quiet || true
+            open "$TARGET"
+            exit 1
         fi
 
         echo "Replacing app..."

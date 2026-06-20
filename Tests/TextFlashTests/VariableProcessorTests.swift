@@ -29,6 +29,12 @@ private func fixedDate() -> Date {
     return components.date!
 }
 
+private func formattedFixedDate(_ format: String) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = format
+    return formatter.string(from: fixedDate())
+}
+
 // MARK: - 固定剪贴板 Provider
 private func fixedClipboard() -> String? {
     "剪贴板内容"
@@ -107,43 +113,55 @@ private func makeProcessor(
 @Test func datetimeDateFormat() {
     let p = makeProcessor(date: fixedDate)
     let (result, offset) = p.process(text: "{datetime:yyyy-MM-dd}")
-    #expect(result == "2026-05-18")
+    #expect(result == formattedFixedDate("yyyy-MM-dd"))
     #expect(offset == -1)
 }
 
 @Test func datetimeTimeFormat() {
     let p = makeProcessor(date: fixedDate)
     let (result, offset) = p.process(text: "{datetime:HH:mm}")
-    #expect(result == "14:30")
+    #expect(result == formattedFixedDate("HH:mm"))
     #expect(offset == -1)
 }
 
 @Test func datetimeFullFormat() {
     let p = makeProcessor(date: fixedDate)
     let (result, offset) = p.process(text: "{datetime:yyyy-MM-dd HH:mm:ss}")
-    #expect(result == "2026-05-18 14:30:45")
+    #expect(result == formattedFixedDate("yyyy-MM-dd HH:mm:ss"))
     #expect(offset == -1)
 }
 
 @Test func datetimeChineseFormat() {
     let p = makeProcessor(date: fixedDate)
     let (result, offset) = p.process(text: "{datetime:yyyy年M月d日}")
-    #expect(result == "2026年5月18日")
+    #expect(result == formattedFixedDate("yyyy年M月d日"))
     #expect(offset == -1)
 }
 
 @Test func datetimeInSentence() {
     let p = makeProcessor(date: fixedDate)
     let (result, offset) = p.process(text: "今天是 {datetime:yyyy-MM-dd}")
-    #expect(result == "今天是 2026-05-18")
+    #expect(result == "今天是 \(formattedFixedDate("yyyy-MM-dd"))")
     #expect(offset == -1)
 }
 
 @Test func datetimeWithWhitespaceAroundColon() {
     let p = makeProcessor(date: fixedDate)
     let (result, offset) = p.process(text: "{datetime : yyyy}")
-    #expect(result == "2026")
+    #expect(result == formattedFixedDate("yyyy"))
     #expect(offset == -1)
+}
+
+@Test func diagnosticsWarnsForEmptyDateFormat() {
+    let p = makeProcessor(date: fixedDate)
+
+    #expect(p.diagnostics(for: "{datetime:}") == [.emptyDateTimeFormat])
+}
+
+@Test func diagnosticsIgnoresEscapedDateFormat() {
+    let p = makeProcessor(date: fixedDate)
+
+    #expect(p.diagnostics(for: "\\{datetime:}") == [])
 }
 
 // MARK: - {clipboard}
@@ -261,14 +279,14 @@ private func makeProcessor(
 @Test func allVariablesCombined() {
     let p = makeProcessor(clipboard: fixedClipboard, date: fixedDate)
     let (result, offset) = p.process(text: "{datetime:HH:mm} {clipboard}{enter}{cursor}done")
-    #expect(result == "14:30 剪贴板内容\ndone")
+    #expect(result == "\(formattedFixedDate("HH:mm")) 剪贴板内容\ndone")
     #expect(offset == 12) // "14:30 剪贴板内容\n" = 5+1+5+1
 }
 
 @Test func cursorBeforeDatetime() {
     let p = makeProcessor(date: fixedDate)
     let (result, offset) = p.process(text: "{cursor}{datetime:yyyy}")
-    #expect(result == "2026")
+    #expect(result == formattedFixedDate("yyyy"))
     #expect(offset == 0)
 }
 
@@ -304,8 +322,8 @@ private func makeProcessor(
     let expected = """
     Dear 剪贴板内容,
     
-    Date: 2026-05-18
-    Time: 14:30:45
+    Date: \(formattedFixedDate("yyyy-MM-dd"))
+    Time: \(formattedFixedDate("HH:mm:ss"))
     
     Body starts here
     Sincerely,
@@ -313,7 +331,11 @@ private func makeProcessor(
     """
     #expect(result == expected)
     // cursor position is right before "\nSincerely" after "Body starts here"
-    // Let's find it: "Dear 剪贴板内容,\n\nDate: 2026-05-18\nTime: 14:30:45\n\nBody starts here"
-    let cursorPos = "Dear 剪贴板内容,\n\nDate: 2026-05-18\nTime: 14:30:45\n\nBody starts here".count
+    let cursorPos = (
+        "Dear 剪贴板内容,\n\n" +
+        "Date: \(formattedFixedDate("yyyy-MM-dd"))\n" +
+        "Time: \(formattedFixedDate("HH:mm:ss"))\n\n" +
+        "Body starts here"
+    ).count
     #expect(offset == cursorPos)
 }
