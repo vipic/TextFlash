@@ -4,6 +4,7 @@ import OSLog
 
 final class UpdateChecker {
     static let shared = UpdateChecker()
+    fileprivate static let maxDownloadBytes: Int64 = 300 * 1024 * 1024
 
     private let log = Logger(subsystem: "com.nekutai.textflash", category: "update")
     private let session: URLSession
@@ -250,12 +251,24 @@ private final class StreamingDownloadDelegate: NSObject, URLSessionDataDelegate 
             return
         }
 
+        if response.expectedContentLength > UpdateChecker.maxDownloadBytes {
+            completionHandler(.cancel)
+            finish(with: UpdateChecker.UpdateError.downloadFailed)
+            return
+        }
+
         didReceiveSuccessfulResponse = true
         totalBytesExpectedToWrite = response.expectedContentLength
         completionHandler(.allow)
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        if totalBytesWritten + Int64(data.count) > UpdateChecker.maxDownloadBytes {
+            dataTask.cancel()
+            finish(with: UpdateChecker.UpdateError.downloadFailed)
+            return
+        }
+
         do {
             try fileHandle?.write(contentsOf: data)
         } catch {

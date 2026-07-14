@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
     private var aboutWindow: NSWindow?
     private var updateWindow: NSWindow?
+    private let updateErrorPath = "/tmp/textflash_update_error.txt"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Self.shared = self
@@ -26,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         loadSnippetsIntoController()
         EventController.shared.start()
         MenuBarManager.shared.updateMenuState()
+        showPendingUpdateErrorIfNeeded()
 
         // 监听片段变更 → 实时重载匹配表
         NotificationCenter.default.addObserver(
@@ -244,6 +246,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor func showAboutFromApplicationMenu() {
         showAbout()
+    }
+
+    private func showPendingUpdateErrorIfNeeded() {
+        let url = URL(fileURLWithPath: updateErrorPath)
+        guard let message = try? String(contentsOf: url, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !message.isEmpty else { return }
+
+        try? FileManager.default.removeItem(at: url)
+        showUpdateErrorWindow(message: message)
+    }
+
+    private func showUpdateErrorWindow(message: String) {
+        updateWindow?.close()
+
+        let hostingView = NSHostingView(rootView: UpdateView(
+            state: .error(message),
+            releaseNotes: nil,
+            currentVersion: nil,
+            latestVersion: nil,
+            onCancel: nil
+        ))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 420, height: 280)
+
+        let window = NSWindow(
+            contentRect: hostingView.frame,
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.t("update.title")
+        window.isReleasedWhenClosed = false
+        window.contentView = hostingView
+        window.center()
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
+        hostingView.rootView = UpdateView(
+            state: .error(message),
+            releaseNotes: nil,
+            currentVersion: nil,
+            latestVersion: nil,
+            onCancel: { [weak window] in window?.close() }
+        )
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateWindow = nil
+                self?.restoreAccessoryModeIfNoManagedWindows()
+            }
+        }
+
+        updateWindow = window
+        presentWindow(window)
     }
 
     @objc func showUpdateWindow() {

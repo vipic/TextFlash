@@ -122,7 +122,13 @@ TextFlash-0.1.12.dmg
 /tmp/textflash_update.log
 ```
 
-排查时优先查看该日志。安装脚本会先备份旧版本，再复制新版本；复制失败时会恢复旧 App。
+如果是 Bundle ID、版本号、签名或安装校验失败，helper 还会写入面向用户的错误原因：
+
+```text
+/tmp/textflash_update_error.txt
+```
+
+旧 App 被重新打开后会读取错误文件并显示更新失败窗口。排查时优先查看 `textflash_update.log`，需要确认用户看到的错误文案时再查看 `textflash_update_error.txt`。安装脚本会先备份旧版本，再复制新版本；复制失败时会恢复旧 App。
 
 ## 发布前检查清单
 
