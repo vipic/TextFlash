@@ -4,7 +4,7 @@ run = "swift build -Xswiftc -DDISABLE_PREVIEWS"
 
 [tasks."build:release"]
 description = "Build TextFlash in release configuration"
-run = "swift build -c release -Xswiftc -DDISABLE_PREVIEWS"
+run = "swift build -c release -Xswiftc -Osize -Xswiftc -DDISABLE_PREVIEWS"
 
 [tasks.test]
 description = "Run the Swift test suite"

@@ -157,7 +157,7 @@ final class UpdateChecker {
     }
 
     private func currentVersionString() -> String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+        AppVersion.displayCurrent
     }
 
     private func cacheResult(_ result: ReleaseInfo) {

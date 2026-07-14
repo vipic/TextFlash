@@ -60,11 +60,11 @@ struct AboutView: View {
     }
 
     private var versionString: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
+        AppVersion.displayCurrent
     }
 
     private var buildString: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
+        AppVersion.displayBuild
     }
 
     private func versionRow(label: String, value: String) -> some View {

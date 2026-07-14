@@ -6,7 +6,8 @@ import AppKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
-    private var statusItem: NSStatusItem?
+    static weak var shared: AppDelegate?
+
     private var snippetWindow: NSWindow?
     private var settingsWindow: NSWindow?
 #if DEBUG
@@ -14,17 +15,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
     private var aboutWindow: NSWindow?
     private var updateWindow: NSWindow?
-    private var updateMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Self.shared = self
         // LSUIElement：隐藏 Dock 图标
         NSApp.setActivationPolicy(.accessory)
         setupApplicationMenu()
 
-        setupMenuBar()
+        MenuBarManager.shared.setup()
         loadSnippetsIntoController()
         EventController.shared.start()
-        updateMenuState()  // start() 后才刷新状态栏图标，避免启动瞬间误显暂停图标
+        MenuBarManager.shared.updateMenuState()
 
         // 监听片段变更 → 实时重载匹配表
         NotificationCenter.default.addObserver(
@@ -45,35 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         EventController.shared.stop()
     }
 
-    // MARK: - 菜单栏
-
-    private func setupMenuBar() {
-        if statusItem == nil {
-            statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        }
-        if let button = statusItem?.button {
-            button.image = textFlashStatusIcon()
-        }
-
-        let menu = NSMenu()
-        menu.addItem(appMenuItem(title: L10n.t("menu.openSnippets"), action: #selector(openSnippetWindow)))
-        menu.addItem(appMenuItem(title: L10n.t("menu.settings"), action: #selector(openSettingsWindow), keyEquivalent: ","))
-        menu.addItem(appMenuItem(title: L10n.t("menu.unicode.addCurrent"), action: #selector(addCurrentAppToUnicodeInput)))
-
-#if DEBUG
-        menu.addItem(.separator())
-        menu.addItem(appMenuItem(title: L10n.t("menu.debug"), action: #selector(openDebugWindow)))
-#endif
-        menu.addItem(.separator())
-        let updateItem = appMenuItem(title: L10n.t("menu.checkUpdates"), action: #selector(showUpdateWindow))
-        menu.addItem(updateItem)
-        updateMenuItem = updateItem
-        menu.addItem(appMenuItem(title: L10n.t("menu.about"), action: #selector(showAbout)))
-        menu.addItem(NSMenuItem(title: L10n.t("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        menu.delegate = self
-        statusItem?.menu = menu
-        updateMenuState()
-    }
+    // MARK: - 应用菜单
 
     private func setupApplicationMenu() {
         let mainMenu = NSMenu()
@@ -135,7 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - 片段窗口
 
-    @MainActor @objc private func openSnippetWindow() {
+    @objc func openSnippetWindow() {
         // 打开管理面板只做静默启动，不主动弹系统权限提示。
         EventController.shared.start()
 
@@ -195,7 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.setFrame(frame, display: false)
     }
 
-    @MainActor @objc private func openSettingsWindow() {
+    @objc func openSettingsWindow() {
         if let existing = settingsWindow {
             presentWindow(existing)
             return
@@ -232,7 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow = window
     }
 
-    @MainActor @objc private func showAbout() {
+    @objc func showAbout() {
         if let existing = aboutWindow {
             presentWindow(existing)
             return
@@ -273,7 +246,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         showAbout()
     }
 
-    @MainActor @objc private func showUpdateWindow() {
+    @objc func showUpdateWindow() {
         if let existing = updateWindow {
             presentWindow(existing)
             return
@@ -343,8 +316,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 hostingView.rootView = UpdateView(
                     state: .upToDate(
-                        version: currentVersionString,
-                        build: currentBuildString,
+                        version: AppVersion.displayCurrent,
+                        build: AppVersion.displayBuild,
                         lastCheckDate: UpdateChecker.shared.lastCheckDate(),
                         lastReleaseNotes: UpdateChecker.shared.cachedReleaseNotes()
                     ),
@@ -413,7 +386,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func addCurrentAppToUnicodeInput() {
+    @objc func addCurrentAppToUnicodeInput() {
         guard let app = EventController.shared.exclusionTargetApplication() else {
             showSimpleAlert(
                 title: L10n.t("unicodeApps.addFailed.title"),
@@ -435,7 +408,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
 #if DEBUG
-    @MainActor @objc private func openDebugWindow() {
+    @objc func openDebugWindow() {
         if let existing = debugWindow {
             presentWindow(existing)
             return
@@ -494,7 +467,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func languageDidChange(_ notification: Notification) {
         setupApplicationMenu()
-        setupMenuBar()
+        MenuBarManager.shared.languageDidChange()
         snippetWindow?.title = L10n.t("window.snippets")
         settingsWindow?.title = L10n.t("window.settings")
         aboutWindow?.title = L10n.t("about.title")
@@ -502,81 +475,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #if DEBUG
         debugWindow?.title = L10n.t("window.debug")
 #endif
-    }
-
-    private func updateMenuState() {
-        updateMenuItem?.isEnabled = !UpdateChecker.shared.isDevBuild
-        updateStatusIcon()
-    }
-
-    private func updateStatusIcon() {
-        guard let button = statusItem?.button else { return }
-        button.image = textFlashStatusIcon()
-    }
-
-    private func textFlashStatusIcon() -> NSImage {
-        let resourceName = isDevBuild ? "MenuBarIconDev" : "MenuBarIcon"
-        if let image = bundledStatusIcon(named: resourceName, extension: "svg")
-            ?? bundledStatusIcon(named: "MenuBarIcon", extension: "svg") {
-            return image
-        }
-
-        return fallbackStatusIcon()
-    }
-
-    private func bundledStatusIcon(named name: String, extension fileExtension: String) -> NSImage? {
-        if let url = Bundle.module.url(forResource: name, withExtension: fileExtension),
-           let image = NSImage(contentsOf: url) {
-            image.size = NSSize(width: 18, height: 18)
-            image.isTemplate = true
-            image.accessibilityDescription = "TextFlash"
-            return image
-        }
-        return nil
-    }
-
-    private var isDevBuild: Bool {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-        let bundleID = Bundle.main.bundleIdentifier ?? ""
-        return version.contains("-dev") || bundleID.hasSuffix(".dev")
-    }
-
-    private func fallbackStatusIcon() -> NSImage {
-        let size = NSSize(width: 18, height: 18)
-        let image = NSImage(size: size)
-        image.lockFocus()
-
-        NSColor.black.setFill()
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
-            .foregroundColor: NSColor.black,
-            .paragraphStyle: paragraph
-        ]
-        NSString(string: "T").draw(
-            in: NSRect(x: 0, y: 0.5, width: size.width, height: size.height),
-            withAttributes: attributes
-        )
-
-        image.unlockFocus()
-        image.isTemplate = true
-        image.accessibilityDescription = "TextFlash"
-        return image
-    }
-
-    private var currentVersionString: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
-    }
-
-    private var currentBuildString: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
-    }
-}
-
-extension AppDelegate: NSMenuDelegate {
-    func menuWillOpen(_ menu: NSMenu) {
-        updateMenuState()
     }
 }
 

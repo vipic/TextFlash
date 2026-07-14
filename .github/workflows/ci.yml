@@ -31,4 +31,4 @@ jobs:
         run: swift test -Xswiftc -DDISABLE_PREVIEWS
 
       - name: Build release
-        run: swift build -c release -Xswiftc -DDISABLE_PREVIEWS
+        run: swift build -c release -Xswiftc -Osize -Xswiftc -DDISABLE_PREVIEWS

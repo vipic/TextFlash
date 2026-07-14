@@ -36,7 +36,9 @@ mise run deploy
 mise run release-auto
 ```
 
-文本展开需要 macOS 辅助功能权限。如果无法触发展开，请通过菜单栏检查权限状态。
+文本展开需要 macOS 辅助功能权限。如果无法触发展开，请通过设置检查权限状态。
+
+菜单栏：**左键**打开片段管理，**右键**打开菜单（检查更新、设置、Unicode 输入等）。
 
 CI 会在 macOS 上运行 shell 脚本语法检查、`swift test` 和 `swift build -c release`。重要变更详见 `CHANGELOG.md`。
 
@@ -56,7 +58,7 @@ CI 会在 macOS 上运行 shell 脚本语法检查、`swift test` 和 `swift bui
 
 ## 应用排除
 
-通过菜单栏可以暂停展开、排除当前应用、管理排除列表。排除列表按 bundle identifier 存储在 `UserDefaults` 中。
+在设置中可管理排除列表与 Unicode 输入应用。排除列表按 bundle identifier 存储在 `UserDefaults` 中。菜单栏右键可快速将当前应用加入 Unicode 输入列表。
 
 ## 命令行备份与恢复
 
@@ -71,6 +73,8 @@ CI 会在 macOS 上运行 shell 脚本语法检查、`swift test` 和 `swift bui
 
 ## 发布
 
+完整发布流程见 [RELEASE.md](RELEASE.md)。本地签名要求见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
+
 构建 DMG：
 
 ```bash
@@ -83,7 +87,7 @@ mise run release -- 0.1.0
 mise run release-auto
 ```
 
-发布产物会写入 `dist/`，避免多个版本的 DMG 堆在项目根目录。
+发布产物会写入 `dist/`。默认使用稳定代码签名证书 `Nekutai`（可通过 `CODESIGN_IDENTITY` 覆盖）；不支持 ad-hoc 回退。
 
 默认运行测试。跳过测试仅打包查看：
 
@@ -91,15 +95,10 @@ mise run release-auto
 RUN_TESTS=false mise run release -- 0.1.0
 ```
 
-发布需要 Developer ID 签名和公证：
+发布到 GitHub Releases：
 
 ```bash
-CODESIGN_IDENTITY="Developer ID Application: Example" \
-NOTARIZE=true \
-APPLE_ID="you@example.com" \
-APPLE_TEAM_ID="TEAMID" \
-APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx" \
 mise run release -- 0.1.0 --publish
 ```
 
-`--publish` 需要 Git 工作区干净，脚本会推送当前 `HEAD` 和发布 tag。
+`--publish` 需要在 `main` 分支、Git 工作区干净，脚本会推送 tag 并创建 GitHub Release。
