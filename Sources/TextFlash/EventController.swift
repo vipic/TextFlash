@@ -234,10 +234,7 @@ public final class EventController {
             },
             userInfo: userInfo
         ) else {
-            // tapCreate 返回 nil → 权限不足
-            DispatchQueue.main.async { [weak self] in
-                self?.requestPermission()
-            }
+            // tapCreate 返回 nil → 权限不足；不主动弹系统授权框，由界面横幅引导去设置。
             return false
         }
 

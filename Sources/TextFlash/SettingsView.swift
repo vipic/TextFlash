@@ -47,6 +47,10 @@ struct SettingsView: View {
         .sheet(isPresented: $showExclusions) {
             ExcludedAppsSettingsView()
         }
+        .onAppear(perform: refreshAccessibilityPermission)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshAccessibilityPermission()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .textFlashUnicodeAppsDidChange)) { _ in
             unicodeAppsCount = EventController.shared.unicodeBundleIDs.count
         }
@@ -155,10 +159,10 @@ struct SettingsView: View {
             subtitle: hasAccessibilityPermission
                 ? L10n.t("settings.permission.enabled")
                 : L10n.t("settings.permission.disabled"),
-            action: requestAccessibilityPermission
+            action: openAccessibilitySettingsIfNeeded
         ) {
             Button {
-                requestAccessibilityPermission()
+                openAccessibilitySettingsIfNeeded()
             } label: {
                 Label(
                     hasAccessibilityPermission
@@ -307,12 +311,17 @@ struct SettingsView: View {
         }
     }
 
-    private func requestAccessibilityPermission() {
-        let granted = EventController.shared.requestPermission()
-        if !granted {
-            EventController.openAccessibilitySettings()
+    private func openAccessibilitySettingsIfNeeded() {
+        guard !hasAccessibilityPermission else { return }
+        EventController.openAccessibilitySettings()
+    }
+
+    private func refreshAccessibilityPermission() {
+        let granted = EventController.shared.checkPermission()
+        hasAccessibilityPermission = granted
+        if granted {
+            EventController.shared.start()
         }
-        hasAccessibilityPermission = EventController.shared.checkPermission()
     }
 }
 

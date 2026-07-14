@@ -107,7 +107,7 @@ final class MenuBarManager: NSObject {
     }
 
     private func bundledStatusIcon(named name: String, extension fileExtension: String) -> NSImage? {
-        if let url = Bundle.module.url(forResource: name, withExtension: fileExtension),
+        if let url = AppResourceBundle.main.url(forResource: name, withExtension: fileExtension),
            let image = NSImage(contentsOf: url) {
             image.size = NSSize(width: 18, height: 18)
             image.isTemplate = true

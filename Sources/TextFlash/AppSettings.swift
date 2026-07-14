@@ -97,18 +97,19 @@ enum L10n {
     }
 
     static func t(_ key: String) -> String {
+        let resources = AppResourceBundle.main
         let bundle: Bundle
         if let code = currentLanguageCode,
-           let resourcePath = Bundle.module.resourcePath {
+           let resourcePath = resources.resourcePath {
             // .lproj 是目录，不能用 path(forResource:ofType:)（只查文件）
             let lproj = (resourcePath as NSString).appendingPathComponent("\(code).lproj")
             if let localizedBundle = Bundle(path: lproj) {
                 bundle = localizedBundle
             } else {
-                bundle = .module
+                bundle = resources
             }
         } else {
-            bundle = .module
+            bundle = resources
         }
 
         return NSLocalizedString(key, bundle: bundle, comment: "")

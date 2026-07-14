@@ -56,6 +56,10 @@ struct SnippetManagerView: View {
         }
         .frame(minWidth: 900, idealWidth: 1040, minHeight: 560, idealHeight: 640)
         .preferredColorScheme(.light)
+        .onAppear(perform: refreshAccessibilityPermission)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshAccessibilityPermission()
+        }
         .sheet(isPresented: Binding(
             get: { manager.editMode != .inactive },
             set: { if !$0 { manager.editMode = .inactive } }
@@ -262,7 +266,7 @@ struct SnippetManagerView: View {
             Spacer()
 
             Button {
-                requestAccessibilityPermission()
+                EventController.openAccessibilitySettings()
             } label: {
                 Text(L10n.t("snippets.permission.open"))
                     .font(.system(size: 12, weight: .medium))
@@ -631,12 +635,12 @@ struct SnippetManagerView: View {
         return L10n.t("snippets.group.all")
     }
 
-    private func requestAccessibilityPermission() {
-        let granted = EventController.shared.requestPermission()
-        if !granted {
-            EventController.openAccessibilitySettings()
+    private func refreshAccessibilityPermission() {
+        let granted = EventController.shared.checkPermission()
+        hasAccessibilityPermission = granted
+        if granted {
+            EventController.shared.start()
         }
-        hasAccessibilityPermission = EventController.shared.checkPermission()
     }
 
     private func exportSnippets() {
